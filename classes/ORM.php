@@ -661,7 +661,7 @@ class Result extends ArrayObject {
 		}
 		$query_set = substr($query_set, 0, -2);
 		
-		$this->query("UPDATE", $binds, $bind_count, $query_set);
+		$this->query("UPDATE", $binds, $bind_count, $query_set, $new_values);
 		
 		return $this;
 	}
@@ -752,9 +752,11 @@ class Result extends ArrayObject {
 		$sth->execute($binds);
 		
 		// Change values of current object to updated object
-		foreach($new_values as $key=>$value) {
-			$this->$key = $value;
-			$this[$key] = $value;
+		if (is_array($new_values)) {
+			foreach($new_values as $key=>$value) {
+				$this->$key = $value;
+				$this[$key] = $value;
+			}
 		}
 	}
 }
