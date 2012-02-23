@@ -16,7 +16,7 @@ class Process {
 
 		$process_name = str_replace('\\', '\\\\', $process_name);
 				
-		shell_exec('php -q '.DOCUMENT_ROOT."core/processes/execute.php {$process_name}".(DEV ? ' DEV':'').' > /dev/null &');
+		shell_exec('php -q '.DOCUMENT_ROOT."core/loader/processes.php {$process_name}".(DEV ? ' DEV':'').' > /dev/null &');
 	}
 
 }
