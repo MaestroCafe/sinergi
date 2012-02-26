@@ -265,12 +265,13 @@ class File {
 	 * Write
 	 *
 	 */ 
-	public function write($str) {
+	public function write($string) {
+		if (isset($this->file_pointer)) {
+			fclose($this->file_pointer);
+		}
+		$this->file_pointer = fopen($this->path, 'w');
 		
-		/* Empty the file beforehand */
-		ftruncate($this->file_pointer, 0);
-		
-		fputs($this->file_pointer, $str);
+		fwrite($this->file_pointer , $string);
 		
 		return $this;
 	}

@@ -42,6 +42,16 @@ class ORM extends ArrayObject {
 	private $is_unique = false, $unique_object;
 	
 	/**
+	 * Boolean used to track if order by has already been started, in which case we use a comma to separate them
+	 * 
+	 * @param $provider
+	 * @var bool
+	 * @access private
+	 * @return const
+	 */
+	private $order_by = false;
+	
+	/**
 	 * Logic operators
 	 * 
 	 * @param $provider
@@ -350,6 +360,48 @@ class ORM extends ArrayObject {
 	}
 	
 	/**
+	 * Replace
+	 * 
+	 * @param $provider
+	 * @var bool
+	 * @access private
+	 * @return const
+	 */
+	public function replace_die($field, $value=null) { $this->die = true; return $this->replace($field, $value); }### TO REMOVE OF COURSE 
+	public function replace($field, $value=null) {
+		if (!is_array($field)) { $field = [$field=>$value]; } // Options
+		
+		$this->set_database();
+		$this->get_table_name(); // Get table name
+		
+		$query = "REPLACE INTO {$this->slashes[$this->db_type][0]}{$this->table_name}{$this->slashes[$this->db_type][1]} (";
+		$query_values = "";
+		$binds = [];
+		$bind_count = 0;
+
+		foreach ($field as $key=>$value) {
+			$bind_count++;
+			$query .= "{$this->slashes[$this->db_type][0]}{$key}{$this->slashes[$this->db_type][1]}, ";
+			$query_values .= ":value{$bind_count}, ";
+			$binds["value{$bind_count}"] = $value;
+		}
+		
+		$query = substr($query, 0, -2).") VALUES (".substr($query_values, 0, -2).");";
+			
+		if (isset($this->die) && $this->die==true) {
+			print_R($binds);
+			echo $query; die();
+		}
+		
+		$sth = $this->prepare($query);
+		$sth->execute($binds);
+		
+		$this->reset_query();
+		
+		return $this;
+	}
+	
+	/**
 	 * Get last insert id
 	 * 
 	 * @access public
@@ -503,8 +555,15 @@ class ORM extends ArrayObject {
 	public function order($field, $asc=true) {		
 		$this->select(); // Prepare select query
 		
-		$this->query .= ($this->add_parenthesis ? ")" : "")." ORDER BY {$this->slashes[$this->db_type][0]}{$field}{$this->slashes[$this->db_type][1]} ".(!$asc ? "DESC " : "");
-		$this->add_parenthesis = false;
+		if ($this->order_by==false) { // First order by
+			$this->query .= ($this->add_parenthesis ? ")" : "")." ORDER BY ";
+			$this->add_parenthesis = false;
+			$this->order_by = true;
+		} else {
+			$this->query .= ", ";
+		}
+		
+		$this->query .= "{$this->slashes[$this->db_type][0]}{$field}{$this->slashes[$this->db_type][1]} ".(!$asc ? "DESC " : "");
 
 		return $this;
 	}

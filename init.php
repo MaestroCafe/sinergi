@@ -116,7 +116,7 @@ function sinergi_auto_load($class_name) {
 		
 	}
 	/* Helper */
-	else if (substr($class_name, 0, 7)=='helper\\') {
+	else if (strtolower(substr($class_name, 0, 7))=='helper\\') {
 		$file = str_replace('\\', '/', strtolower(substr($class_name, 7)));
 		require HELPERS."{$file}.php";
 	}
@@ -136,7 +136,7 @@ function sinergi_auto_load($class_name) {
 #		require PLUGINS."{$file[0]}/{$subFolder}{$file[1]}.php";
 #	} 
 	/* Processes */
-	else if (substr(strtolower($class_name), 0, 7)=='process') {
+	else if (strtolower(substr($class_name, 0, 7))=='process') {
 		$file = str_replace('\\', '/', strtolower(substr($class_name, 8)));
 		require_once PROCESSES."{$file}.php";
 	}
