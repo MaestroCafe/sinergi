@@ -80,8 +80,10 @@ class File {
 	 * @return const
 	 */
 	public function copy($dest) {
+		$dest = $this->clean_path($dest);
 		
 		if(copy($this->path, $dest)) {
+			$this->path = $dest;
 			return $this;
 		}
 		
@@ -108,15 +110,17 @@ class File {
 	  * @access private
 	  * @return const
 	  */ 
-	public function duplicate() {
-		$sufix = 1;
-		$ext = $this->get_extention();
-		$new_path = '';
-		
-		do {
-			$sufix++;
-			$new_path = preg_replace('/\\' . $ext . '/', '_' . $sufix . $ext, $this->path);
-		} while(file_exists($new_path));
+	public function duplicate($new_path=null) {
+		if (!isset($new_path)) {
+			$sufix = 1;
+			$ext = $this->get_extention();
+			$new_path = '';
+			
+			do {
+				$sufix++;
+				$new_path = preg_replace('/\\' . $ext . '/', '_' . $sufix . $ext, $this->path);
+			} while(file_exists($new_path));
+		}
 		
 		$this->copy($new_path);
 		
@@ -254,11 +258,11 @@ class File {
 	}
 	
 	/**
-	 * Rename
-	 *
+	 * Rename a file
 	 */ 
 	public function rename($new_name) {
-		rename($this->get_name(), preg_replace('/' . $this->get_name(). '$/', $new_name, $this->path));
+		$new_name = $this->clean_path($new_name);
+		rename($this->path, $new_name);
 	}
 	
 	/**
