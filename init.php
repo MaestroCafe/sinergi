@@ -45,7 +45,8 @@ else define('URL', '');
  *
  */
 if (
-	(!PROCESS_EXECUTION and substr($_SERVER['SERVER_ADDR'], 0, 10)=='192.168.1.') or 
+	(isset($config['dev']) && $config['dev']==true) || 
+	(!PROCESS_EXECUTION and substr($_SERVER['SERVER_ADDR'], 0, 10)=='192.168.1.') || 
 	(PROCESS_EXECUTION and isset($_SERVER['argv'][2]) and $_SERVER['argv'][2]=='DEV')
 ) {
 	define('DEV', true);
