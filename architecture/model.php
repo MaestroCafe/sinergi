@@ -49,6 +49,9 @@ class Model extends sinergi\ORM {
 				case 'access':
 					$dsn = "dblib:dbname={$config['databases'][$this->database]['dbname']};host={$database_address[0]};charset=UTF-8;".(isset($database_address[1]) ? "port={$database_address[1]};":"");
 					break;
+				case 'odbc':
+					$dsn = "odbc:{$config['databases'][$this->database]['source']}";
+					break;
 			}
 			
 			try {
@@ -58,11 +61,15 @@ class Model extends sinergi\ORM {
 						break;
 					default:
 						$this->db = new PDO($dsn, $config['databases'][$this->database]['user'], $config['databases'][$this->database]['password']);
+						
 						break;
 				}
 				$this->connection = $this->db;
 			}
 			catch(PDOException $e) {
+				
+				echo var_dump($this->db);
+				die($e->getMessage());
 				trigger_error($e->getMessage());
 			}
 		}
