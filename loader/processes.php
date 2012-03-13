@@ -57,8 +57,8 @@ function executeProcess($class_name, $auto=false) {
 	if($auto && $process->interval == null) {
 		return false;
 	}
-			
-	if(!isset($process->interval) or $process->interval!=0 || (floor(time()/60) % $process->interval) == 0) {
+	
+	if(!isset($process->interval) || ($process->interval!=0 && (floor(time()/60) % $process->interval) == 0)) {
 		$process->execute();
 	}
 	

@@ -331,6 +331,7 @@ class ORM extends ArrayObject {
 	 * @access private
 	 * @return const
 	 */
+	public function create_die($field, $value=null) { $this->die = true; return $this->create($field, $value); }### TO REMOVE OF COURSE 
 	public function create($field, $value=null) {
 		if (!is_array($field)) { $field = [$field=>$value]; } // Options
 		
@@ -351,6 +352,11 @@ class ORM extends ArrayObject {
 		
 		$query = substr($query, 0, -2).") VALUES (".substr($query_values, 0, -2).");";
 			
+		if (isset($this->die) && $this->die==true) {
+			print_R($binds);
+			echo $query; die();
+		}
+		
 		$sth = $this->prepare($query);
 		$sth->execute($binds);
 		
