@@ -293,6 +293,8 @@ class File {
 		if ($this->connect_ftp(array_merge($server_settings, ['path'=>$path]))) {
 			$this->open_file();
 			
+			ftp_pasv($this->ftp_connection, true);
+			
 			if (!ftp_fput($this->ftp_connection, basename($upload_file_name), $this->file_pointer, FTP_BINARY)) {
 				$this->ftp_connection = null;
 				trigger_error('Failed uploading file to depo.');
