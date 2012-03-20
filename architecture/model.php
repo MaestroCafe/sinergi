@@ -3,6 +3,7 @@
 require CORE."classes/ORM.php";
 
 class Model extends sinergi\ORM {
+	static public $connections = [];
 	/**
 	 * The PDO Connection object.
 	 *
@@ -39,8 +40,11 @@ class Model extends sinergi\ORM {
 		global $config;
 		
 		$this->set_database();
+
+		if (isset(self::$connections[$this->database])) { // Check if application is already connected
+			$this->db = $this->connection = self::$connections[$this->database];
 		
-		if (isset($this->database)) {
+		} else if (isset($this->database)) { // Otherwise create connection
 			$database_address = explode(':', $config['databases'][$this->database]['host']); // Get database address and port
 			switch($this->db_type) {
 				case 'mysql':
@@ -65,6 +69,7 @@ class Model extends sinergi\ORM {
 						break;
 				}
 				$this->connection = $this->db;
+				self::$connections[$this->database] = $this->connection;/////
 			}
 			catch(PDOException $e) {
 				
