@@ -1,33 +1,96 @@
 <?php
+/**
+ * Sinergi is an open source application development framework for PHP
+ *
+ * Requires PHP version 5.4
+ *
+ * LICENSE: This source file is subject to the GNU General Public License 
+ * version 2.0 (GPL-2.0) that is bundled with this package in the file 
+ * LICENSE-GPL.txt and is available through the world-wide-web at the 
+ * following URI: http://www.opensource.org/licenses/GPL-2.0. If you did 
+ * not receive a copy of the GNU General Public License version 2.0 and are 
+ * unable to obtain it through the web, please send a note to admin@sinergi.co 
+ * so we can mail you a copy immediately.
+ *
+ * @package		sinergi
+ * @author		Sinergi Team
+ * @copyright	2010-2012 Sinergi Team
+ * @license		http://www.opensource.org/licenses/GPL-2.0 GNU General Public License version 2.0 (GPL-2.0)
+ * @link		https://github.com/sinergi/sinergi
+ * @since		Version 1.0
+ */
+ 
+/**
+ * The database connection manager.
+ *
+ * @category	core
+ * @package		sinergi
+ * @author		Sinergi Team
+ * @link		https://github.com/sinergi/sinergi
+ */
 
-require CORE."classes/ORM.php";
+require CORE."classes/db/table.php";
+require CORE."classes/db/row.php";
 
-class Model extends sinergi\ORM {
-	static public $connections = [];
+class DB extends sinergi\db\table {
 	/**
-	 * The PDO Connection object.
+	 * Connections are static for re-use.
 	 *
-	 * @var object
-	 * @access private
+	 * @var	array
 	 */
-	private $db = null;
-	protected $database = null;
-	protected $db_type;
-	protected $connection;
-				
+	static public $connections = [];
+	
 	/**
-	 * change model Database.
+	 * The connection to the database.
 	 *
-	 * @access protected
+	 * @var	string
+	 */
+	private $connection;
+	
+	/**
+	 * The database name.
+	 *
+	 * @var	string
+	 */
+	private $database_name = null;
+	
+	/**
+	 * Database driver.
+	 *
+	 * @var	string
+	 */
+	protected $driver;
+	
+	/**
+	 * Database table.
+	 *
+	 * @var	string
+	 */
+	protected $table;
+	
+	/**
+	 * Database manager constructor.
+	 * 
+	 * @param	string	the name of the database
+	 * @param	string	the name of the table
+	 * @return	void
+	 */
+	public function __construct($database_name, $table_name) {
+		$this->set_database($database_name);
+		$this->table_name = $table_name;
+	}
+	
+	/**
+	 * Set the database.
+	 *
+	 * @access private
 	 * @return void
 	 */
-	protected function set_database($database=null) {
+	private function set_database($database_name) {
 		global $config;
 		
-		if(!isset($this->database)) {
-			$this->database = $this->get_database_name();
-			$this->db_type = $config['databases'][$this->database]['type'];
-		}
+		$this->database_name = $database_name;
+		$this->driver = $config['databases'][$this->database_name]['type'];
 	}
 	
 	/**
@@ -36,90 +99,102 @@ class Model extends sinergi\ORM {
 	 * @access private
 	 * @return void
 	 */
-	private function connect_database($database=null) {
+	private function connect_database() {
 		global $config;
 		
-		$this->set_database();
-
-		if (isset(self::$connections[$this->database])) { // Check if application is already connected
-			$this->db = $this->connection = self::$connections[$this->database];
+		if (isset(self::$connections[$this->database_name])) { // Check if application is already connected
+			$this->connection = self::$connections[$this->database_name];
 		
-		} else if (isset($this->database)) { // Otherwise create connection
-			$database_address = explode(':', $config['databases'][$this->database]['host']); // Get database address and port
-			switch($this->db_type) {
+		} else { // Otherwise create connection
+			
+			$database_address = explode(':', $config['databases'][$this->database_name]['host']); // Get database address and port
+			
+			// Create DNS
+			switch($this->driver) {
 				case 'mysql':
-					$dsn = "mysql:dbname={$config['databases'][$this->database]['dbname']};host={$database_address[0]};".(isset($database_address[1]) ? "port={$database_address[1]};":"");
+					$dsn = 
+						"mysql:dbname={$config['databases'][$this->database_name]['dbname']};".
+						"host={$database_address[0]};".
+						(!empty($database_address[1]) ? "port={$database_address[1]};":"");
 					break;
 				case 'access':
-					$dsn = "dblib:dbname={$config['databases'][$this->database]['dbname']};host={$database_address[0]};charset=UTF-8;".(isset($database_address[1]) ? "port={$database_address[1]};":"");
+					$dsn = 
+						"dblib:dbname={$config['databases'][$this->database_name]['dbname']};".
+						"host={$database_address[0]};".
+						"charset=UTF-8;".
+						(!empty($database_address[1]) ? "port={$database_address[1]};":"");
 					break;
 				case 'odbc':
-					$dsn = "odbc:{$config['databases'][$this->database]['source']}";
+					$dsn = 
+						"odbc:{$config['databases'][$this->database_name]['source']}";
 					break;
 			}
 			
-			try {
-				switch($this->db_type) {
-					case 'mysql': // Use UTF-8 with MySQL by default
-						$this->db = new PDO($dsn, $config['databases'][$this->database]['user'], $config['databases'][$this->database]['password'], [PDO::MYSQL_ATTR_INIT_COMMAND=>'SET NAMES \'UTF8\'']);
-						break;
-					default:
-						$this->db = new PDO($dsn, $config['databases'][$this->database]['user'], $config['databases'][$this->database]['password']);
-						
-						break;
-				}
-				$this->connection = $this->db;
-				self::$connections[$this->database] = $this->connection;/////
+			// Create driver options
+			switch($this->driver) {
+			    case 'mysql': // Use UTF-8 with MySQL by default
+			    	$driver_options = [PDO::MYSQL_ATTR_INIT_COMMAND=>'SET NAMES \'UTF8\''];
+			    	break;
+			    	
+			    default:
+			    	$driver_options = [];
+			    	break;
+			}
+			
+			// Try to connect
+			try {				
+				$this->connection = 
+			    	new PDO(
+			    		$dsn, 
+			    		$config['databases'][$this->database_name]['user'], 
+			    		$config['databases'][$this->database_name]['password'],
+			    		$driver_options
+			    	);
+			    
 			}
 			catch(PDOException $e) {
-				
-				echo var_dump($this->db);
-				die($e->getMessage());
 				trigger_error($e->getMessage());
 			}
+			
+			self::$connections[$this->database_name] = $this->connection; // Store the database connection for other instances
 		}
 	}
 	
 	/**
-	 * PDO Connect.
+	 * PDO methods shortcuts.
 	 *
-	 * @access protected
 	 * @return void
 	 */
-	private function get_database_name() {
-		global $config;
-		
-		$namespaces = explode('\\', str_replace('model\\', '', get_class($this)), 2);
-		
-		if (!isset($namespaces[1])) { // No database selected, use the only one given in settings
-			if (count($config["databases"])>1) trigger_error("No database selected"); // Trigger error if multiple databases are setup but none is selected
-			else $namespaces[0] = key($config["databases"]);
-		}
-		
-		return $namespaces[0];
-	}
-	
-	/**
-	 * PDO Shortcut.
-	 *
-	 * @access public
-	 * @return object
-	 */
 	public function __call($method, $args) {
-		
 		switch($method) {
-			case 'commit': case 'errorCode': case 'errorInfo': case 'exec': case 'getAttribute': case 'getAvailableDrivers': case 'inTransaction': case 'lastInsertId': case 'prepare': case 'query': case 'quote': case 'rollBack': case 'setAttribute':
-				if (!isset($this->db)) $this->connect_database();
+			case 'commit': 
+			case 'errorCode': 
+			case 'errorInfo': 
+			case 'exec': 
+			case 'getAttribute': 
+			case 'getAvailableDrivers': 
+			case 'inTransaction': 
+			case 'lastInsertId': 
+			case 'prepare': 
+			case 'query': 
+			case 'quote': 
+			case 'rollBack': 
+			case 'setAttribute':
+				if (!isset($this->connection)) {
+					$this->connect_database();
+				}
 				
+				// Call the PDO method
 				if (count($args)>1) {
-					return call_user_func(array($this->db, $method), $args);
+					return call_user_func(array($this->connection, $method), $args);
+				} else if (count($args)==1) {
+					return call_user_func(array($this->connection, $method), $args[0]);
+				} else {
+					return call_user_func(array($this->connection, $method));
 				}
-				else if (count($args)==1) {
-					return call_user_func(array($this->db, $method), $args[0]);
-				}
-				else return call_user_func(array($this->db, $method));
 				
 				break;
+			
 			default: 
 				trigger_error('unknown method');
 				break;
@@ -129,11 +204,9 @@ class Model extends sinergi\ORM {
 	/**
 	 * Close connection with database when object is destroyed.
 	 * 
-	 * @access public
 	 * @return void
 	 */
 	public function __destruct() {
-		$this->db = null;
+		$this->connection = null;
 	}
-
 }

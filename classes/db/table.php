@@ -1,19 +1,39 @@
 <?php
+/**
+ * Sinergi is an open source application development framework for PHP
+ *
+ * Requires PHP version 5.4
+ *
+ * LICENSE: This source file is subject to the GNU General Public License 
+ * version 2.0 (GPL-2.0) that is bundled with this package in the file 
+ * LICENSE-GPL.txt and is available through the world-wide-web at the 
+ * following URI: http://www.opensource.org/licenses/GPL-2.0. If you did 
+ * not receive a copy of the GNU General Public License version 2.0 and are 
+ * unable to obtain it through the web, please send a note to admin@sinergi.co 
+ * so we can mail you a copy immediately.
+ *
+ * @package		sinergi
+ * @author		Sinergi Team
+ * @copyright	2010-2012 Sinergi Team
+ * @license		http://www.opensource.org/licenses/GPL-2.0 GNU General Public License version 2.0 (GPL-2.0)
+ * @link		https://github.com/sinergi/sinergi
+ * @since		Version 1.0
+ */
+ 
+/**
+ * The database query manager.
+ *
+ * @category	core
+ * @package		sinergi
+ * @author		Sinergi Team
+ * @link		https://github.com/sinergi/sinergi
+ */
 
-namespace sinergi;
+namespace sinergi\db;
 
 use PDO, ArrayObject;
 
-class ORM extends ArrayObject {
-	/**
-	 * Table name
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 */
-	public $table_name;
-	
+class Table extends ArrayObject {
 	/**
 	 * Query and parameters
 	 * 
@@ -36,7 +56,7 @@ class ORM extends ArrayObject {
 	 * Boolean that defines if the results come from the get or a get_all method and the object for that unique result
 	 * 
 	 * @param $is_unique, $unique_object
-	 * @var bool, Result object
+	 * @var bool, Row object
 	 * @access private, private
 	 */
 	private $is_unique = false, $unique_object;
@@ -96,15 +116,15 @@ class ORM extends ArrayObject {
 			
 			foreach ($field as $key=>$value) {
 				$this->bind_count++;
-				$query_fields .= "{$this->slashes[$this->db_type][0]}{$key}{$this->slashes[$this->db_type][1]}=:value{$this->bind_count}, ";
+				$query_fields .= "{$this->slashes[$this->driver][0]}{$key}{$this->slashes[$this->driver][1]}=:value{$this->bind_count}, ";
 				$this->binds["value{$this->bind_count}"] = $value;
 			}
 			$query_fields = substr($query_fields, 0, -2);
 			
 			// Replace SELECT * FROM by UPDATE and query fields
 			$this->query = preg_replace(
-				"/SELECT \* FROM {$this->slashes[$this->db_type][0]}([^{$this->slashes[$this->db_type][1]}.]*){$this->slashes[$this->db_type][1]}/", 
-				"UPDATE {$this->slashes[$this->db_type][0]}$1{$this->slashes[$this->db_type][1]}".$query_fields, 
+				"/SELECT \* FROM {$this->slashes[$this->driver][0]}([^{$this->slashes[$this->driver][1]}.]*){$this->slashes[$this->driver][1]}/", 
+				"UPDATE {$this->slashes[$this->driver][0]}$1{$this->slashes[$this->driver][1]}".$query_fields, 
 				$this->query
 			);
 			
@@ -159,15 +179,15 @@ class ORM extends ArrayObject {
 			
 			foreach ($field as $key=>$value) {
 				$this->bind_count++;
-				$query_fields .= "{$this->slashes[$this->db_type][0]}{$key}{$this->slashes[$this->db_type][1]}={$this->slashes[$this->db_type][0]}{$key}{$this->slashes[$this->db_type][1]}+:value{$this->bind_count}, ";
+				$query_fields .= "{$this->slashes[$this->driver][0]}{$key}{$this->slashes[$this->driver][1]}={$this->slashes[$this->driver][0]}{$key}{$this->slashes[$this->driver][1]}+:value{$this->bind_count}, ";
 				$this->binds["value{$this->bind_count}"] = $value;
 			}
 			$query_fields = substr($query_fields, 0, -2);
 			
 			// Replace SELECT * FROM by UPDATE and query fields
 			$this->query = preg_replace(
-				"/SELECT \* FROM {$this->slashes[$this->db_type][0]}([^{$this->slashes[$this->db_type][1]}.]*){$this->slashes[$this->db_type][1]}/", 
-				"UPDATE {$this->slashes[$this->db_type][0]}$1{$this->slashes[$this->db_type][1]}".$query_fields, 
+				"/SELECT \* FROM {$this->slashes[$this->driver][0]}([^{$this->slashes[$this->driver][1]}.]*){$this->slashes[$this->driver][1]}/", 
+				"UPDATE {$this->slashes[$this->driver][0]}$1{$this->slashes[$this->driver][1]}".$query_fields, 
 				$this->query
 			);
 			
@@ -259,7 +279,7 @@ class ORM extends ArrayObject {
 		
 		if (isset($fields)) {
 			$query_fields = "";
-			foreach($fields as $field) $query_fields .= "{$this->slashes[$this->db_type][0]}{$field}{$this->slashes[$this->db_type][1]}, "; // Create query fields
+			foreach($fields as $field) $query_fields .= "{$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]}, "; // Create query fields
 			$query_fields = substr($query_fields, 0, -2);
 						
 			$this->query = str_replace(" * FROM", " {$query_fields} FROM", $this->query); // Put query fields in query
@@ -278,7 +298,7 @@ class ORM extends ArrayObject {
 		if (isset($get_one) && $get_one===true) {
 			$result = $sth->fetch(PDO::FETCH_ASSOC);
 			
-			$this->unique_object = new Result($this->connection, $this->table_name, $this->db_type, $this->slashes);
+			$this->unique_object = new Row($this->connection, $this->table_name, $this->driver, $this->slashes);
 			
 			if (is_array($result)) {
 				foreach($result as $field=>$value) {
@@ -293,7 +313,7 @@ class ORM extends ArrayObject {
 			if (is_array($results)) {
 				foreach ($results as $row) {
 					
-					$obj = new Result($this->connection, $this->table_name, $this->db_type, $this->slashes);
+					$obj = new Row($this->connection, $this->table_name, $this->driver, $this->slashes);
 					
 					foreach($row as $field=>$value) {
 						$obj->$field = $obj[$field] = $value;
@@ -335,17 +355,14 @@ class ORM extends ArrayObject {
 	public function create($field, $value=null) {
 		if (!is_array($field)) { $field = [$field=>$value]; } // Options
 		
-		$this->set_database();
-		$this->get_table_name(); // Get table name
-		
-		$query = "INSERT INTO {$this->slashes[$this->db_type][0]}{$this->table_name}{$this->slashes[$this->db_type][1]} (";
+		$query = "INSERT INTO {$this->slashes[$this->driver][0]}{$this->table_name}{$this->slashes[$this->driver][1]} (";
 		$query_values = "";
 		$binds = [];
 		$bind_count = 0;
 
 		foreach ($field as $key=>$value) {
 			$bind_count++;
-			$query .= "{$this->slashes[$this->db_type][0]}{$key}{$this->slashes[$this->db_type][1]}, ";
+			$query .= "{$this->slashes[$this->driver][0]}{$key}{$this->slashes[$this->driver][1]}, ";
 			$query_values .= ":value{$bind_count}, ";
 			$binds["value{$bind_count}"] = $value;
 		}
@@ -377,17 +394,14 @@ class ORM extends ArrayObject {
 	public function replace($field, $value=null) {
 		if (!is_array($field)) { $field = [$field=>$value]; } // Options
 		
-		$this->set_database();
-		$this->get_table_name(); // Get table name
-		
-		$query = "REPLACE INTO {$this->slashes[$this->db_type][0]}{$this->table_name}{$this->slashes[$this->db_type][1]} (";
+		$query = "REPLACE INTO {$this->slashes[$this->driver][0]}{$this->table_name}{$this->slashes[$this->driver][1]} (";
 		$query_values = "";
 		$binds = [];
 		$bind_count = 0;
 
 		foreach ($field as $key=>$value) {
 			$bind_count++;
-			$query .= "{$this->slashes[$this->db_type][0]}{$key}{$this->slashes[$this->db_type][1]}, ";
+			$query .= "{$this->slashes[$this->driver][0]}{$key}{$this->slashes[$this->driver][1]}, ";
 			$query_values .= ":value{$bind_count}, ";
 			$binds["value{$bind_count}"] = $value;
 		}
@@ -537,7 +551,7 @@ class ORM extends ArrayObject {
 	public function limit($offset, $row_count=null) {		
 		$this->select(); // Prepare select query
 		
-		switch ($this->db_type) {
+		switch ($this->driver) {
 			case 'access':
 				if (isset($row_count)) trigger_error("Microsoft Access does not support offset for limit.");
 				$this->query = str_replace("SELECT ", "SELECT TOP({$offset}) ", $this->query);
@@ -569,7 +583,7 @@ class ORM extends ArrayObject {
 			$this->query .= ", ";
 		}
 		
-		$this->query .= "{$this->slashes[$this->db_type][0]}{$field}{$this->slashes[$this->db_type][1]} ".(!$asc ? "DESC " : "");
+		$this->query .= "{$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]} ".(!$asc ? "DESC " : "");
 
 		return $this;
 	}
@@ -584,7 +598,7 @@ class ORM extends ArrayObject {
 	 */
 	private function where($field, $operator, $value) {
 		$this->bind_count++;
-		$this->query .= " AND {$this->slashes[$this->db_type][0]}{$field}{$this->slashes[$this->db_type][1]}{$operator}";
+		$this->query .= " AND {$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]}{$operator}";
 		if ($value===null) {
 			$this->query .= "NULL";		
 		} else {
@@ -601,11 +615,9 @@ class ORM extends ArrayObject {
 	 * @access private
 	 * @return const
 	 */
-	private function select() {
-		$this->set_database();
-		$this->get_table_name(); // Get table name
+	private function select() {		
 		if (!isset($this->query) || $this->query=='') {
-			$this->query = "SELECT * FROM {$this->slashes[$this->db_type][0]}{$this->table_name}{$this->slashes[$this->db_type][1]} WHERE (";
+			$this->query = "SELECT * FROM {$this->slashes[$this->driver][0]}{$this->table_name}{$this->slashes[$this->driver][1]} WHERE (";
 		}
 		
 		if ($this->or_operator) { // Apply or logic operator
@@ -619,18 +631,6 @@ class ORM extends ArrayObject {
 		}
 	}
 	
-	/**
-	 * Get table name
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
-	 */
-	private function get_table_name() {
-		if (!isset($this->table_name) || $this->table_name=='') $this->table_name = strtolower(strrev(explode('\\', strrev(get_class($this)), 2)[0]));
-	}
-		
 	/**
 	 * Reset Query
 	 * 
@@ -672,156 +672,5 @@ class ORM extends ArrayObject {
 	 */
 	private function reset_operators() {
 		$this->or_operator = $this->not_operator = $this->and_operator = false;
-	}
-}
-
-class Result extends ArrayObject {
-	/**
-	 * 
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
-	 */
-	protected $connection, $table_name, $db_type, $slashes;
-	
-	/**
-	 * 
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
-	 */
-	public function __construct($connection, $table_name, $db_type, $slashes) {
-		$this->connection = $connection;
-		$this->table_name = $table_name;
-		$this->db_type = $db_type;
-		$this->slashes = $slashes;
-	}
-
-	/**
-	 * 
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
-	 */
-	public function update($field, $value=null) {
-		if (!is_array($field)) { $field = [$field=>$value]; } // Options
-		
-		$bind_count = 0;
-				
-		// Build the "set" part of the query
-		$query_set = " SET ";
-		
-		foreach ($field as $key=>$value) {
-			$bind_count++;
-			$query_set .= "{$this->slashes[$this->db_type][0]}{$key}{$this->slashes[$this->db_type][1]}=:value{$bind_count}, ";
-			$binds["value{$bind_count}"] = $value;
-			// Store new values to change them in the object after the update
-			$new_values[$key] = $value;
-		}
-		$query_set = substr($query_set, 0, -2);
-		
-		$this->query("UPDATE", $binds, $bind_count, $query_set, $new_values);
-		
-		return $this;
-	}
-	
-	/**
-	 * 
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
-	 */
-	public function decrease($field, $value=1) {
-		return $this->increase($field, -$value);
-	}
-
-	/**
-	 * 
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
-	 */
-	public function increase($field, $value=1) {
-		if (!is_array($field)) { $field = [$field=>$value]; } // Options
-		
-		$bind_count = 0;
-				
-		// Build the "set" part of the query
-		$query_set = " SET ";
-		
-		foreach ($field as $key=>$value) {
-			$bind_count++;
-			$query_set .= "{$this->slashes[$this->db_type][0]}{$key}{$this->slashes[$this->db_type][1]}={$this->slashes[$this->db_type][0]}{$key}{$this->slashes[$this->db_type][1]}+:value{$bind_count}, ";
-			$binds["value{$bind_count}"] = $value;
-			// Store new values to change them in the object after the update
-			$new_values[$key] = $this->$key + $value;
-		}
-		$query_set = substr($query_set, 0, -2);
-		
-		$this->query("UPDATE", $binds, $bind_count, $query_set, $new_values);
-		
-		return $this;
-	}
-	
-	/**
-	 * 
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
-	 */
-	public function delete() {
-		$this->query("DELETE FROM");
-		
-		return $this;
-	}
-	
-	/**
-	 * The query function serves the update and delete fuctions. Because both functions are almost identical,
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
-	 */
-	protected function query($query, $binds = [], $bind_count = 0, $query_set="", $new_values=null) {
-		$query = strtoupper($query);
-		
-		// Build the "where" part of the query
-		$query_where = " WHERE ";
-		
-		foreach($this as $key=>$value) {
-			$bind_count++;
-			if (!empty($value)) {
-				$query_where .= "{$this->slashes[$this->db_type][0]}{$key}{$this->slashes[$this->db_type][1]}=:value{$bind_count} AND ";
-				$binds["value{$bind_count}"] = $value;
-			}
-		}
-		$query_where = substr($query_where, 0, -5);
-				
-		// Build query
-		$query .= " {$this->slashes[$this->db_type][0]}{$this->table_name}{$this->slashes[$this->db_type][1]}{$query_set}{$query_where};";
-				
-		$sth = $this->connection->prepare($query);
-		$sth->execute($binds);
-		
-		// Change values of current object to updated object
-		if (is_array($new_values)) {
-			foreach($new_values as $key=>$value) {
-				$this->$key = $value;
-				$this[$key] = $value;
-			}
-		}
 	}
 }
