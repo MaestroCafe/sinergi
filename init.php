@@ -109,7 +109,7 @@ function sinergi_auto_load($class_name) {
 			require_once MODELS."{$file}.php"; // If model exists, get model file
 		
 		} else {
-			
+			echo MODELS."{$file}.php";die();
 			$name_space = explode('\\', strrev($class_name), 2);
 			eval('namespace '.strtolower(substr($class_name, 0, -(strlen($name_space[0])+1))).'; class '.strrev($name_space[0]).' extends \Model {}'); // If model does not exists, create an empty model
 						
@@ -120,6 +120,12 @@ function sinergi_auto_load($class_name) {
 	else if (strtolower(substr($class_name, 0, 7))=='helper\\') {
 		$file = str_replace('\\', '/', strtolower(substr($class_name, 7)));
 		require HELPERS."{$file}.php";
+	}
+	/* Mountain */
+	else if (strtolower(substr($class_name, 0, 17))=='plugins\\mountain\\') {
+		$file = str_replace('\\', '/', strtolower(substr($class_name, 17)));
+		
+		require PLUGINS."mountain/traits/{$file}.php";
 	}
 	/* Plugin */
 #	else if (substr($class_name, 0, 8)=='plugins\\') {

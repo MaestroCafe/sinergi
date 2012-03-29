@@ -122,6 +122,8 @@ class File {
 			} while(file_exists($new_path));
 		}
 		
+		$this->create_dir(dirname($new_path));
+		
 		$this->copy($new_path);
 		
 		return $this;

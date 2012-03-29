@@ -8,6 +8,7 @@ class Element extends DOMManipulation {
 	 */
 	public function __construct($element, $properties=null) {
 		global $DOM;
+		
 		/**
 		 * Create Element. 
 		 *

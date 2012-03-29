@@ -179,10 +179,17 @@ foreach ($plugins as $namespace=>$plugin) { if (function_exists("\\plugins\\{$na
  * @return void
  */
 function loader() {
-	global $controllers;
+	global $controllers, $plugins;
 	static $loaded=false;
-		
+	
 	if (!$loaded) {
+		// Add each plugin in an array
+		$plugins_paths = [];
+		foreach ($plugins as $plugin) {
+			$plugins_paths[] = "plugins/{$plugin}";
+		}
+		
+		// Check each controllers
 		foreach ($controllers as $controller) {
 			/* Try to match controller file */
 			$filename = preg_replace("/.*\/(.*)$/", "$1", strtolower($controller[0]));
@@ -192,6 +199,21 @@ function loader() {
 				strtolower($controller[0])."/{$filename}"
 			];
 			foreach($files as $file) {
+				// Plugin controller
+				foreach($plugins_paths as $plugin_path) {
+					if (substr($file, 0, strlen($plugin_path))==$plugin_path) {
+						// Check if controller exists
+						if (file_exists(DOCUMENT_ROOT."{$file}.php")) {
+							require_once DOCUMENT_ROOT."{$file}.php";
+							
+							if (method_exists($filename, $controller[1])) {
+								new \Controller($file, $controller[1], $controller[2]);
+								return true;
+							}
+						}
+					}
+				}
+				// Application controller
 				if (file_exists(CONTROLLERS."{$file}.php")) {
 					require_once CONTROLLERS."{$file}.php";
 										

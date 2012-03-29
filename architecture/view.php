@@ -239,7 +239,7 @@ class View {
 	 */
 	public function __call($method, $args) {		
 		if(count($this->elements) == 1) {
-			current($this->elements)->__call($method, $args);
+			return current($this->elements)->__call($method, $args);
 		} else {
 			switch($method) {
 				case 'inject':

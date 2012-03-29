@@ -8,8 +8,6 @@ class Controller {
 	protected $controller;
 	
 	public function __construct($controller, $method=null, $args=[]) {
-		require_once CONTROLLERS. $controller . '.php';
-
 		$controller_name = preg_replace("/.*\/(.*)$/", "$1", strtolower($controller)); // Get controller name
 				
 		$this->controller = new $controller_name;
