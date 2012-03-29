@@ -121,6 +121,7 @@ class File {
 				$new_path = preg_replace('/\\' . $ext . '/', '_' . $sufix . $ext, $this->path);
 			} while(file_exists($new_path));
 		}
+		$new_path = $this->clean_path($new_path);
 		
 		$this->create_dir(dirname($new_path));
 		
