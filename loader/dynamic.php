@@ -275,7 +275,7 @@ function dump ($ajax=true) {
 	 * Replace "class-fixed-tmp" with "class" because using "class" in the DOM Object creates problems.
 	 *
 	 */
-	$output = ((isset($doctype) ? $doctype : '') . str_replace('class-fixed-tmp', 'class', $DOM->saveHTML()));
+	$output = ((isset($doctype) ? $doctype : '') . str_replace(['class-fixed-tmp', '="attribute-fixed-tmp"'], ['class', ''], $DOM->saveHTML()));
 	if (!isset($config['entities']) or $config['entities'] == false) $output = mb_convert_encoding($output, 'UTF-8', 'HTML-ENTITIES');
 
 	/**

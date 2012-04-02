@@ -55,4 +55,25 @@ class Element extends DOMManipulation {
 			if (!isset($properties['alt'])) $this->element->setAttribute('alt', '');
 		}
 	}
+	
+	/**
+	 * Return the element as a string.
+	 * 
+	 * return string
+	 */
+	public function __toString() {
+		global $DOM;
+
+		$clone = clone $this; // Clone the node
+		$element = $DOM->appendChild($clone->element); // Append the clone
+		 
+		$doc = new DOMDocument('1.0'); // Create a new empty document
+		$new_element = $doc->importNode($element, true); // Import the clone
+		$new_element = $doc->appendChild($new_element); 
+		
+		$clone->destroy(); // Destroy the clone
+		unset($clone);
+		
+		return $doc->saveHTML();
+	}
 }
