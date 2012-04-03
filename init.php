@@ -30,6 +30,7 @@ if (!empty($_SERVER['OAUTH_SERVER'])) {
  * Get the configuration file and set the default timezone. 
  *
  */
+$config = [];
 require SETTINGS.'application.php';
 if (isset($config['time_zone'])) date_default_timezone_set($config['time_zone']);
 
