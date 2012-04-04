@@ -127,7 +127,7 @@ function sinergi_auto_load($class_name) {
 		$file = str_replace('\\', '/', strtolower(substr($class_name, 17)));
 		
 		if (preg_match('/^model/i', $file)) $file = preg_replace('/^model/i', 'models', $file);
-		else $file = "traits/{$file}";
+		else $file = "classes/{$file}";
 		
 		require PLUGINS."mountain/{$file}.php";
 	}
