@@ -126,7 +126,10 @@ function sinergi_auto_load($class_name) {
 	else if (strtolower(substr($class_name, 0, 17))=='plugins\\mountain\\') {
 		$file = str_replace('\\', '/', strtolower(substr($class_name, 17)));
 		
-		require PLUGINS."mountain/traits/{$file}.php";
+		if (preg_match('/^model/i', $file)) $file = preg_replace('/^model/i', 'models', $file);
+		else $file = "traits/{$file}";
+		
+		require PLUGINS."mountain/{$file}.php";
 	}
 	/* Plugin */
 #	else if (substr($class_name, 0, 8)=='plugins\\') {
