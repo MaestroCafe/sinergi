@@ -462,7 +462,7 @@ class Table extends ArrayObject {
 	 * @access private
 	 * @return const
 	 */
-	public function find($field, $value=null) {
+	public function find($field, $value=true) {
 		if (!is_array($field)) { $field = [$field=>$value]; } // Options
 		$this->select(); // Prepare select query
 		
