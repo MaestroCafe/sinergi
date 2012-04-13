@@ -565,6 +565,23 @@ class Table extends ArrayObject {
 	}
 	
 	/**
+	 * Group by
+	 * 
+	 * @param $provider
+	 * @var bool
+	 * @access public
+	 * @return const
+	 */
+	public function group( $field ) {		
+		$this->select(); // Prepare select query
+		
+		$this->query .= ($this->add_parenthesis ? ")" : "")." GROUP BY {$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]}";
+		$this->add_parenthesis = false;
+
+		return $this;
+	}
+	
+	/**
 	 * Order
 	 * 
 	 * @param $provider
