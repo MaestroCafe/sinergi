@@ -75,7 +75,12 @@ class DB extends sinergi\db\table {
 	 * @param	string	the name of the table
 	 * @return	void
 	 */
-	public function __construct($database_name, $table_name) {
+	public function __construct( $database_name, $table_name = null ) {
+		if (!isset($table_name)) {
+			$table_name = $database_name;
+			$database_name = null;
+		}
+		
 		$this->set_database($database_name);
 		$this->table_name = $table_name;
 	}
@@ -86,10 +91,15 @@ class DB extends sinergi\db\table {
 	 * @access private
 	 * @return void
 	 */
-	private function set_database($database_name) {
+	private function set_database( $database_name = null ) {
 		global $config;
 		
-		$this->database_name = $database_name;
+		if (isset($database_name)) {
+			$this->database_name = $database_name;
+		} else {
+			$this->database_name = key($config['databases']);
+		}
+		
 		$this->driver = $config['databases'][$this->database_name]['type'];
 	}
 	
