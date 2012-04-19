@@ -21,6 +21,16 @@ if (is_dir($base_path)) {
     } while (next($dir));
 }
 
+/* Add plugins jobs */
+foreach($plugins as $plugin) {
+    $i = 0;
+    $dir = [PLUGINS."{$plugin}/jobs"];
+    do {
+    	if (is_file(current($dir)) and strstr(current($dir), '.php')) $processes_paths[] = current($dir);
+    	else if (is_dir(current($dir))) foreach (array_slice(scandir(current($dir)), 2) as $item) $dir[] = current($dir) . "/{$item}";
+    } while (next($dir));
+}
+
 /* If only 1 process is called execute the process */
 if(isset($_SERVER['argv'][1])) {
 	foreach($processes_paths as $process_path) {
@@ -44,7 +54,12 @@ if(isset($_SERVER['argv'][1])) {
  */
 function classNameFromPath($path) {
 	global $base_path;
-	return 'process' .str_replace([$base_path, '.php', '/'], ['', '', '\\'], $path);
+	
+	if (preg_match('/^'.str_replace('/', '\/', PLUGINS).'/i', $path)) {
+		return 'plugins\\' .str_replace([PLUGINS, '/jobs/', '.php', '/'], ['', '/process/', '', '\\'], $path);
+	} else {
+		return 'process' .str_replace([$base_path, '.php', '/'], ['', '', '\\'], $path);	
+	}
 }
 
 

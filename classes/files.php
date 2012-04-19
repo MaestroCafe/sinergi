@@ -14,11 +14,11 @@ class File {
 	 * @access private
 	 * @return const
 	 */
-	public function __construct($path=null) {
+	public function __construct($path=null, $create=true) {
 		if (isset($path)) {
 			$path = $this->clean_path($path);
 							
-			if(!file_exists($path)) { // Create the file and path
+			if(!file_exists($path) && $create) { // Create the file and path
 				$dir = dirname($path);						
 				$this->create_dir($dir); // Create directory if directory does not exists
 				$this->file_pointer = fopen($path, 'w+');
@@ -194,7 +194,7 @@ class File {
 	 *
 	 */ 
 	public function get_size() {
-		return filesize($this->path);
+		return file_exists($this->path) ? filesize($this->path) : 0;
 	}
 	
 	/**
