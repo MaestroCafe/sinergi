@@ -11,7 +11,7 @@ namespace sinergi;
 $filetype = 'html';
 
 /* Get file extension if URN is file */
-preg_match("/.*\.+([html|xml|json|rss|atom]+)$/i", REQUEST_URN, $matches);
+preg_match("/.*\.+([html|xml|json|rss|atom|png|jpg|jpeg|gif|css|js]+)$/i", REQUEST_URN, $matches);
 if (isset($matches[1])) {
 	$filetype = strtolower($matches[1]);
 
@@ -107,6 +107,18 @@ foreach ($routes as $route) {
 		$controllers[$i][2] = [];
 		
 		if (isset($route[2]) && is_array($route[2])) {
+			// Match a method name instead of scope
+			$method = basename($route[1]);
+			
+			$controllers[$i][0] = substr($route[1], 0, -(strlen($method)+1));
+			$controllers[$i][1] = $method;
+			foreach ($route[2] as $key=>$variable) {
+				$controllers[$i][2][$variable] = isset($matches[$key+1]) ? $matches[$key+1] : null;
+			}
+			
+			// Match a scope
+			$i++;
+			$controllers[$i][0] = $route[1];
 			$controllers[$i][1] = 'scope';
 			
 			foreach ($route[2] as $key=>$variable) {
@@ -181,7 +193,7 @@ foreach ($plugins as $namespace=>$plugin) { if (function_exists("\\plugins\\{$na
 function loader() {
 	global $controllers, $plugins;
 	static $loaded=false;
-	
+		
 	if (!$loaded) {
 		// Add each plugin in an array
 		$plugins_paths = [];

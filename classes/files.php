@@ -81,7 +81,7 @@ class File {
 	 */
 	public function copy($dest) {
 		$dest = $this->clean_path($dest);
-		
+				
 		if(copy($this->path, $dest)) {
 			$this->path = $dest;
 			return $this;
@@ -201,9 +201,12 @@ class File {
 	 * Move
 	 *
 	 */ 
-	public function move($dest) {
+	public function move( $dest ) {
+		$dest = $this->clean_path($dest);
+		$origin = $this->path;
 		
 		$this->copy($dest);
+		$this->path = $origin;
 		$this->delete();
 		$this->path = $dest;
 		
