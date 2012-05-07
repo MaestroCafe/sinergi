@@ -11,10 +11,11 @@ namespace sinergi;
 $filetype = 'html';
 
 /* Get file extension if URN is file */
-preg_match("/.*\.+([html|xml|json|rss|atom|png|jpg|jpeg|gif|css|js]+)$/i", REQUEST_URN, $matches);
+preg_match("/.*\.+(.{2,4})$/i", REQUEST_URN, $matches);
+
 if (isset($matches[1])) {
 	$filetype = strtolower($matches[1]);
-
+	
 /* Redirect URN if URN is a directory and doesn't end with a slash */
 } else {
 	if(substr(REQUEST_URN, -1)!=='/') {
