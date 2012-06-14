@@ -1197,4 +1197,3 @@ class retrieve extends Element {
  *
  */
 function eleminate($element, $args) { unset($element->$args[0]); }
-
