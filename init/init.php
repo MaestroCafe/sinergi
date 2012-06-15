@@ -42,11 +42,11 @@ new Sinergi; // Instantiate Sinergi
 
 class Sinergi {
 	/**
-	 * The mode the application is running as (normal|api|process).
+	 * The mode the application is running as (request|api|process).
 	 * 
 	 * @var	string
 	 */
-	public static $mode = 'normal';
+	public static $mode = 'request';
 	
 	/**
 	 * Determines the environment the application is running in (production|development).
@@ -92,9 +92,9 @@ class Sinergi {
 		
 		// Load request file
 		switch($this::$mode) {
-			case 'normal':
-				require Path::$core."loader/normal.php";
-				new sinergi\Normal_loader;
+			case 'request':
+				require Path::$core."loader/request.php";
+				new sinergi\Request_loader;
 				break;
 			case 'api':
 				require Path::$core."loader/api.php";
@@ -158,7 +158,7 @@ class Sinergi {
 		require "{$core}/classes/request.php";			// Get the request class
 		require "{$core}/classes/autoloader.php";		// Get the autoloader class
 		
-		if ($this::$mode=='normal') { // Get the classes that are only available in normal mode
+		if ($this::$mode=='request') { // Get the classes that are only available in request mode
 			require "{$core}/classes/controller.php";	// Get the controller class
 			require "{$core}/classes/view.php";			// Get the view class
 		}

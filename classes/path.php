@@ -42,7 +42,7 @@ class Path {
 					$modules, 
 					$public_files, 
 					$public_cache, 
-					$settings,
+					$settings, 
 					$apis, 
 					$configs, 
 					$controllers, 

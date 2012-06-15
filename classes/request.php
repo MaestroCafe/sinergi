@@ -63,7 +63,7 @@ class Request {
 		}
 		
 		// Define the URL, URI, URN and query string of the request.
-		if (Sinergi::$mode == 'normal' || Sinergi::$mode == 'api') {
+		if (Sinergi::$mode == 'request' || Sinergi::$mode == 'api') {
 			$this::$url = rtrim(
 				$this::$uri = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') . "{$_SERVER['SERVER_NAME']}{$_SERVER['REQUEST_URI']}", 
 				'?'	

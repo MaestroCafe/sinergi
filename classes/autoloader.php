@@ -59,9 +59,10 @@ class Auto_loader {
 		];
 		
 		foreach($matches as $namespace=>$path) {
-			if (preg_match("/^{$namespace}\\/i", $class_name)) { // Match models
+			if (preg_match("/^{$namespace}\\\/i", $class_name)) { // Match models
 				require_once $path . str_replace('\\', '/', strtolower(substr($class_name, strlen($namespace)))) . ".php";
+				return true;
 			}
-		}		
+		}
 	}
 }

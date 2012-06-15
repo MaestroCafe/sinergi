@@ -22,7 +22,7 @@
  */
 
 /**
- * Load a normal page
+ * Search for the right contoller and load the page
  *
  * @category	core
  * @package		sinergi
@@ -32,15 +32,25 @@
 
 namespace sinergi;
 
-use Request;
+use Request,
+	Path,
+	sinergi\classes\Hooks;
 
-class Normal_loader {
+class Request_loader {
 	/**
 	 * The request urn without the file extension
 	 * 
 	 * @var	string
 	 */
-	public $request_urn;
+	private $request_urn;
+	
+	/**
+	 * A merge of the routes and controllers
+	 * 
+	 * @var	array
+	 */
+	public $routes = [];
+	
 
 	/**
 	 * Search for the right contoller and load the page
@@ -48,12 +58,27 @@ class Normal_loader {
 	 * @return void
 	 */
 	public function __construct() {
+		global $routes;
+		
 		$this->redirect_urn(); // Redirect URN
 		
 		$this->request_urn = preg_replace("/\.".Request::$file_type."$/i", '', Request::$urn);
 		if ($this->request_urn === '/') $this->request_urn .= 'index';
 		
-		echo $this->request_urn;
+		// Get routes
+		if (file_exists(Path::$configs . "routes.php")) {
+			require Path::$configs . "routes.php";
+			
+			Hooks::run('routes'); // Run all the routes hooks
+			
+			if (is_array($routes)) {
+				$this->routes = $routes;
+			}
+		}
+		
+		$this->routes = array_merge($routes, $this->controllers_routes());
+		
+		print_r($this->routes); die();
 	}
 	
 	/**
@@ -69,44 +94,54 @@ class Normal_loader {
 	}
 	
 	
+	/**
+	 * Create a routes array from the controllers that have no matching route
+	 * 
+	 * @return array
+	 */
+	private function controllers_routes() {
+		if (is_dir(Path::$controllers)) {
+			
+			function search( $needle, $haystack ) {
+				foreach ($haystack as $route) {
+					if (strtolower($route[1]) === strtolower($needle)) {
+					    return true;
+					}
+				}
+				   
+				return false;
+			}
+ 
+			$routes = [];
+			$dir = [Path::$controllers];
+			
+			do {
+				if (file_exists(current($dir)) && strtolower(substr(current($dir), -4)) === '.php') {
+					$route = substr(current($dir), strlen(Path::$controllers) + 1, -4);
+					
+					if (!search($route, $this->routes)) {
+						$routes[] = [$route.'/', $route];
+					}
+				} else if (is_dir(current($dir))) {
+					foreach (array_slice(scandir(current($dir)), 2) as $item) {
+						$dir[] = current($dir) . "/{$item}";
+					}
+				}
+			} while (next($dir));
+			
+			return $routes;
+		}
+		
+		return [];
+	}
+	
+	
 	
 #}
 
 
 private function yo() {
 
-/**
- * Add controllers with no route to routes
- * 
- */
-function search($array, $value) {
-	$result = false;
-	
-	foreach ($array as $route) {
-		if (strtolower($route[1])==strtolower($value)) {
-			$result = true;
-		}
-	}
-	
-	return $result;
-}
- 
-if (!isset($routes) || !is_array($routes)) $routes = [];
-
-if (is_dir(CONTROLLERS)) {
-	$i = 0;
-	$dir = [CONTROLLERS];
-	do {
-		if (is_file(current($dir)) and strstr(current($dir), '.php')) {
-			$route = ltrim(str_replace([CONTROLLERS, '.php'], '', current($dir)), '/');
-			
-			if (!search($routes, $route)) {
-				$routes[] = [$route.'/', $route];
-			}
-		}
-		else if (is_dir(current($dir))) foreach (array_slice(scandir(current($dir)), 2) as $item) $dir[] = current($dir) . "/{$item}";
-	} while (next($dir));
-}
 
 /**
  * Check for a match in routes. 
