@@ -148,6 +148,25 @@ class RequestLoader {
 	 * @return void
 	 */
 	private function matchRoutes() {
+		// Magic methods are forbided as a match
+		$magic_methods = [
+			'__construct', 
+			'__destruct', 
+			'__call', 
+			'__callstatic', 
+			'__get', 
+			'__set', 
+			'__isset', 
+			'__unset', 
+			'__sleep', 
+			'__wakeup', 
+			'__clone', 
+			'__tostring', 
+			'__invoke',
+			'__set_state',
+			'__clone'
+		];
+		
 		$controllers = [];
 		
 		$needle = ltrim($this->requestURN, '/');
@@ -155,7 +174,11 @@ class RequestLoader {
 		
 		// The needle method is a needle that considers the last part of the request path to be the name of the method used
 		// in the controller, thus, it uses the dirname as the needle.
-		$needle_method = dirname($needle).'/';
+		if (dirname($needle) !== '.') {
+			$needle_method = dirname($needle).'/';
+		} else {
+			$needle_method = 'index/';
+		}
 		
 		// The needle path is a needle that will match the controller by path. If the request path is controller_name
 		// it needs to match controller_name/controller_name
@@ -192,47 +215,58 @@ class RequestLoader {
 			if(preg_match("/^{$haystack}$/i", $needle, $matches) || preg_match("/^{$haystack}$/i", $needle_path, $matches)) {
 				$controllers[$i][0] = $route[1];
 				$controllers[$i][1] = 'index';
-				$controllers[$i][2] = [];
-				
+				if (isset($route[2]) && is_array($route[2])) {
+					foreach ($route[2] as $key=>$variable) {
+						$controllers[$i][2][$variable] = isset($matches[$key+1]) ? $matches[$key+1] : null;
+					}
+				} else {
+					$controllers[$i][2] = [];
+				}
+				$i++;
+			
 				if (isset($route[2]) && is_array($route[2])) {
 					// Match a method name instead of index
 					$method = basename($route[1]);
 					
-					$controllers[$i][0] = substr($route[1], 0, -(strlen($method)+1));
-					$controllers[$i][1] = $method;
-					foreach ($route[2] as $key=>$variable) {
-						$controllers[$i][2][$variable] = isset($matches[$key+1]) ? $matches[$key+1] : null;
+					if (!in_array(strtolower($method), $magic_methods)) {
+						$controllers[$i][0] = substr($route[1], 0, -(strlen($method)+1));
+						$controllers[$i][1] = $method;
+						foreach ($route[2] as $key=>$variable) {
+							$controllers[$i][2][$variable] = isset($matches[$key+1]) ? $matches[$key+1] : null;
+						}
+						$i++;
 					}
-					
+
 					// Match index
-					$i++;
 					$controllers[$i][0] = $route[1];
 					$controllers[$i][1] = 'index';
 					
 					foreach ($route[2] as $key=>$variable) {
 						$controllers[$i][2][$variable] = isset($matches[$key+1]) ? $matches[$key+1] : null;
 					}
-				} else { // Also match last part as method name instead of index 
 					$i++;
+				} else { // Also match last part as method name instead of index 
 					
 					$method = basename($route[1]);
 					
-					$controllers[$i][0] = substr($route[1], 0, -(strlen($method)+1));
-					$controllers[$i][1] = $method;
-					$controllers[$i][2] = [];
+					if (!in_array(strtolower($method), $magic_methods)) {
+						$controllers[$i][0] = substr($route[1], 0, -(strlen($method)+1));
+						$controllers[$i][1] = $method;
+						$controllers[$i][2] = [];
+						$i++;
+					}
 				}
 								
-				$i++;
 			}
 			
 			// Try to match the needle_method and needle_path_method
-			else if((preg_match("/^{$haystack}$/i", $needle_method, $matches) || preg_match("/^{$haystack}$/i", $needle_path_method, $matches)) && $method!=='index') {
+			else if((preg_match("/^{$haystack}$/i", $needle_method, $matches) || preg_match("/^{$haystack}$/i", $needle_path_method, $matches)) && $method !== 'index' && !in_array(strtolower($method), $magic_methods)) {
 				$controllers[$i][0] = $route[1];
 				$controllers[$i][1] = $method;
 				$controllers[$i][2] = [];
 				
 				$i++;
-			} 
+			}
 		}
 		
 		return $controllers;

@@ -39,6 +39,13 @@ class Controller {
 	private $controller;
 	
 	/**
+	 * The traits used by the controller
+	 * 
+	 * @var	array
+	 */
+	private $traits = [];
+	
+	/**
 	 * Instantiate a controller and load the method provided with the arguments provided.
 	 * 
 	 * @param	string	the controller's name
@@ -48,9 +55,16 @@ class Controller {
 	 */
 	public function __construct( $controller, $method = null, $args = [] ) {
 		$controllerName = preg_replace("/.*\/(.*)$/", "$1", strtolower($controller)); // Get controller name
-				
-		$this->controller = new $controllerName;
-				
+		
+		if ($controllerName === 'index' && method_exists('index', 'index') && !method_exists('index', '__construct')) {
+			_sinergi_index_controller();
+			$this->controller = new _SinergiIndexController;
+			$this->traits = class_uses('index');
+		} else {
+			$this->controller = new $controllerName;
+			$this->traits = class_uses($this->controller);
+		}
+						
 		$this->traitsConstructors();
 		
 		if (isset($method)) {
@@ -66,7 +80,7 @@ class Controller {
 	* @return	void
 	*/
    private function traitsConstructors() {
-		foreach(class_uses($this->controller) as $helper) {
+		foreach($this->traits as $helper) {
 			$helperName = "_" . preg_replace("/.*\\\(.*)$/", "$1", strtolower($helper)) . "Construct"; // Get helper name
 			
 			if(method_exists($this->controller, $helperName)) { // Check if helper constructor exists
@@ -85,7 +99,7 @@ class Controller {
 	 */
 	public function __destruct() {
 		if (is_object($this->controller)) {
-			foreach(class_uses($this->controller) as $helper) {
+			foreach($this->traits as $helper) {
 				$helper_name = "_" . preg_replace("/.*\\\(.*)$/", "$1", strtolower($helper)) . "Destruct"; // Get helper name
 				
 				if(method_exists($this->controller, $helper_name)) { // Check if helper constructor exists
@@ -94,4 +108,15 @@ class Controller {
 			}
 		}
    }
+}
+
+/**
+ * Fix for controllers that are named index and have a method named index.
+ * 
+ * @return	void
+ */
+function _sinergi_index_controller() {
+	class _SinergiIndexController extends Index {
+		public function __construct() {}
+	}
 }
