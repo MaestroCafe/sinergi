@@ -34,14 +34,14 @@ namespace sinergi\classes;
 
 use Path;
 
-class Auto_loader {
+class AutoLoader {
 	/**
 	 * Register the autoloader.
 	 * 
 	 * @return	void
 	 */
 	public function __construct() {
-		spl_autoload_register(array($this, 'load'));
+		spl_autoload_register([$this, 'load']);
 	}
 	
 	/**
@@ -50,7 +50,7 @@ class Auto_loader {
 	 * @param	string	name of the class
 	 * @return	void
 	 */
-	private function load($class_name) {
+	private function load( $className ) {
 		$matches = [
 			'model'		=> Path::$models, 
 			'helper'	=> Path::$helpers, 
@@ -59,8 +59,8 @@ class Auto_loader {
 		];
 		
 		foreach($matches as $namespace=>$path) {
-			if (preg_match("/^{$namespace}\\\/i", $class_name)) { // Match models
-				require_once $path . str_replace('\\', '/', strtolower(substr($class_name, strlen($namespace)))) . ".php";
+			if (preg_match("/^{$namespace}\\\/i", $className)) {
+				require_once $path . str_replace('\\', '/', strtolower(substr($className, strlen($namespace)))) . ".php";
 				return true;
 			}
 		}

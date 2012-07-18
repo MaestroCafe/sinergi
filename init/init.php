@@ -35,8 +35,9 @@ ini_set('display_errors', 'On');
 
 header_remove('X-Powered-By'); // Remove PHP from the document's header.
 
-use sinergi\classes\Auto_loader,
-	sinergi\classes\Hooks;
+use sinergi\classes\AutoLoader,
+	sinergi\classes\Hooks,
+	sinergi\DOM;
 
 new Sinergi; // Instantiate Sinergi
 
@@ -70,16 +71,20 @@ class Sinergi {
 	 * @return	void
 	 */
 	public function __construct() {		
-		$this->check_mode();
-		$this->load_classes();
-				
+		$this->checkMode();
+
+		$core = str_replace('/init/init.php', '', $_SERVER['SCRIPT_FILENAME']);
+
+		require "{$core}/classes/path.php";				// Get the path class
 		new Path; // Defines the default paths.
 		
-		$this->load_modules(); // Load modules after the path class because we need the path to load the modules
+		$this->loadClasses(); // Load all required classes
+		
+		$this->loadModules(); // Load modules after the path class because we need the path to load the modules
 		
 		Hooks::run('path'); // Run all the path hooks
 
-		$this->load_settings();
+		$this->loadSettings();
 		Hooks::run('settings'); // Run all the request hooks
 		
 		$this->defaults();
@@ -88,19 +93,19 @@ class Sinergi {
 		new Request; // Defines the default paths.
 		Hooks::run('request'); // Run all the defaults hooks
 		
-		new Auto_loader; // Register the autoloader.
+		new AutoLoader; // Register the autoloader.
 		
 		// Load request file
 		switch($this::$mode) {
 			case 'request':
 				require Path::$core."loader/request.php";
-				new sinergi\Request_loader;
+				new sinergi\RequestLoader;
 				break;
 			case 'api':
-				require Path::$core."loader/api.php";
+				#require Path::$core."loader/api.php";
 				break;
 			case 'process':
-				require Path::$core."loader/process.php";
+				#require Path::$core."loader/process.php";
 				break;
 		}
 	}
@@ -137,7 +142,7 @@ class Sinergi {
 	 * 
 	 * @return void
 	 */
-	private function check_mode() {
+	private function checkMode() {
 		// Checks if the variable OAUTH_SERVER is passed from the server
 		if(!empty($_SERVER['OAUTH_SERVER'])) {
 			$this::$mode = 'api';
@@ -151,21 +156,19 @@ class Sinergi {
 	 * 
 	 * @return void
 	 */
-	private function load_classes() {
-		$core = str_replace('/init/init.php', '', $_SERVER['SCRIPT_FILENAME']);
-
-		require "{$core}/classes/path.php";				// Get the path class
-		require "{$core}/classes/request.php";			// Get the request class
-		require "{$core}/classes/autoloader.php";		// Get the autoloader class
+	private function loadClasses() {
+		require Path::$core . "classes/request.php";			// Get the request class
+		require Path::$core . "classes/autoloader.php";		// Get the autoloader class
 		
 		if ($this::$mode=='request') { // Get the classes that are only available in request mode
-			require "{$core}/classes/controller.php";	// Get the controller class
-			require "{$core}/classes/view.php";			// Get the view class
+			require Path::$core . "classes/controller.php";	// Get the controller class
 		}
 		
-		require "{$core}/classes/hooks.php";				// Get the hook class
-		require "{$core}/classes/model.php";				// Get the model class
-		require "{$core}/classes/process.php";				// Get the process class	
+		require Path::$core . "classes/hooks.php";				// Get the hook class
+		require Path::$core . "classes/model.php";				// Get the model class
+		require Path::$core . "classes/process.php";				// Get the process class	
+				
+		require Path::$core . "classes/view.php";			// Get the view class
 	}
 	
 	/**
@@ -173,7 +176,7 @@ class Sinergi {
 	 * 
 	 * @return void
 	 */
-	private function load_settings() {
+	private function loadSettings() {
 		global $settings;
 		
 		$settings = [];
@@ -200,18 +203,30 @@ class Sinergi {
 	 * 
 	 * @return void
 	 */
-	private function load_modules() {
+	private function loadModules() {
 		if (is_dir(Path::$modules)) {
 			$dirs = scandir(Path::$modules);
 			foreach ($dirs as $dir) {
 				if (substr($dir, 0, 1)!='.' && is_file(Path::$modules . "{$dir}/module.php")) {
 					require Path::$modules . "{$dir}/module.php"; // Get module
-					$module_hooks = "modules\\{$dir}\\Module_hooks";
-					(new $module_hooks)->_init(); // Register module's hooks
+					$moduleMooks = "modules\\{$dir}\\Module_hooks";
+					(new $moduleMooks)->_init(); // Register module's hooks
 				}
 			}
 		}
 	}
+	
+	/**
+	 * Print the DOM if it is not empty
+	 * 
+	 * @return void
+	 */
+	public function __destruct() {
+		if ($this::$mode === 'request' && !empty(DOM::$dom)) {
+			echo DOM::write();
+		}
+	}
+	
 }
 
 exit;

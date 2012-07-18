@@ -1,4 +1,26 @@
 <?php
+
+/**
+ * Sinergi is an open source application development framework for PHP
+ *
+ * Requires PHP version 5.4
+ *
+ * LICENSE: This source file is subject to the GNU General Public License 
+ * version 2.0 (GPL-2.0) that is bundled with this package in the file 
+ * LICENSE-GPL.txt and is available through the world-wide-web at the 
+ * following URI: http://www.opensource.org/licenses/GPL-2.0. If you did 
+ * not receive a copy of the GNU General Public License version 2.0 and are 
+ * unable to obtain it through the web, please send a note to admin@sinergi.co 
+ * so we can mail you a copy immediately.
+ *
+ * @package		sinergi
+ * @author		Sinergi Team
+ * @copyright	2010-2012 Sinergi Team
+ * @license		http://www.opensource.org/licenses/GPL-2.0 GNU General Public License version 2.0 (GPL-2.0)
+ * @link		https://github.com/sinergi/sinergi
+ * @since		Version 1.0
+ */
+ 
 /**
  * Selectors contains the functions necessary to select DOM objects using CSS 3's patterns.
  * For the information on the CSS 3's patterns, please refer to the W3C's documentation
@@ -14,25 +36,14 @@
  * - Pseudos even and odd should be deprecated
  * - Everything here: http://www.w3.org/TR/css3-selectors/#structural-pseudos
  *
- * PHP version 5
+ * TO BE CLEANED UP IN A FUTURE RELEASE OF SINERGI.
  *
- * Copyright © 2011 Gabriel Ames-Bull
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- *
- * @version			0.1
- * @copyright		Copyright © 2011 Gabriel Ames-Bull
- * @link			http://sinergi.co/
- * @license			Apache License
- * @since			File available since Release 0.1
+ * @category	core
+ * @package		sinergi
+ * @author		Sinergi Team
+ * @link		https://github.com/sinergi/sinergi
  */
-
-/**
- * Selector. 
- *
- */
+ 
 function selector($needle, $haystack) {	
 	if (property_exists($haystack, 'element')) $haystack = $haystack->element;
 	/**

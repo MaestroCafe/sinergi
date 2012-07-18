@@ -46,9 +46,9 @@ class Request {
 					$url 			= '', 
 					$urn 			= '', 
 					$secure 		= false, 
-					$domain_name 	= '', 
-					$query_string 	= '',
-					$file_type		= '';
+					$domainName 	= '', 
+					$queryString 	= '',
+					$fileType		= '';
 			
 	/**
 	 * Defines all the defaults paths.
@@ -76,24 +76,24 @@ class Request {
 				$this::$urn = substr($this::$urn, 0, -(strlen("{$_SERVER['QUERY_STRING']}") + 1));
 			}
 			
-			$this::$query_string = $_SERVER['QUERY_STRING'];
+			$this::$queryString = $_SERVER['QUERY_STRING'];
 		}
 		
 		// Define the URL or the request.
 		if (isset($_SERVER['HTTP_HOST'])) {
-		    $this::$domain_name = $_SERVER['HTTP_HOST'];
+		    $this::$domainName = $_SERVER['HTTP_HOST'];
 		}
 		
 		// Get the file type
-		$this::$file_type = $this->get_file_type();
+		$this::$fileType = $this->getFileType();
 	}
 	
 	/**
 	 * Detects file type by its extension. 
 	 * 
-	 * @return string
+	 * @return	string
 	 */
-	private function get_file_type() {
+	private function getFileType() {
 		/* Get file extension if URN is file */
 		preg_match("/.*\.+(.{2,4})$/i", $this::$urn, $matches);
 		

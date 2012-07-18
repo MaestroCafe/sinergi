@@ -36,12 +36,12 @@ class Path {
 	 * 
 	 * @var	string
 	 */
-	public static	$document_root,
+	public static	$documentRoot,
 					$application, 
 					$core, 
 					$modules, 
-					$public_files, 
-					$public_cache, 
+					$publicFiles, 
+					$publicCache, 
 					$settings, 
 					$apis, 
 					$configs, 
@@ -61,14 +61,14 @@ class Path {
 	 * @return	void
 	 */
 	public function __construct() {
-		self::$document_root = str_replace('core/init/init.php', '', $_SERVER['SCRIPT_FILENAME']);
+		self::$documentRoot = str_replace('core/init/init.php', '', $_SERVER['SCRIPT_FILENAME']);
 		
-		self::$application = self::$document_root . "application/";
-		self::$core = self::$document_root . "core/";
-		self::$modules = self::$document_root . "modules/";
-		self::$public_files = self::$document_root . "public_files/";
-		self::$public_cache = self::$document_root . "public_cache/";
-		self::$settings = self::$document_root . "settings/";
+		self::$application = self::$documentRoot . "application/";
+		self::$core = self::$documentRoot . "core/";
+		self::$modules = self::$documentRoot . "modules/";
+		self::$publicFiles = self::$documentRoot . "public_files/";
+		self::$publicCache = self::$documentRoot . "public_cache/";
+		self::$settings = self::$documentRoot . "settings/";
 		
 		self::$apis = self::$application . "apis/";
 		self::$configs = self::$application . "configs/";
