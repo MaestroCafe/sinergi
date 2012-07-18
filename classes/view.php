@@ -48,14 +48,7 @@ class View {
 	 * @var	bool
 	 */
 	public static $loading = false;
-	
-	/**
-	 * Complete tree of elements
-	 * 
-	 * @var	string
-	 */
-	public static $file = null;
-	
+		
 	/**
 	 * Load a view
 	 * 
@@ -78,6 +71,7 @@ class View {
 					
 		// Split the doctype from the rest of the document
 		$views = [];
+		$doctype = null;
 		if (!isset($html)) {
 			$views = explode(PHP_EOL, $content, 2);
 			if (stristr($views[0], 'doctype')) $doctype = $views[0];
@@ -116,8 +110,8 @@ class View {
 			$tree->firstChild->parentNode->insertBefore($node, $tree->firstChild);
 		}
 		
-		// Create Elements object from each nodes from the tree
-		//if (!isset($html) && isset($doctype)) {
+		// Check if view has HTML tags
+		if (preg_match('{<html.+</html>}msU', $view)) {		
 			foreach ($tree->childNodes as $child) {
 				// Avoid empty html nodes
 				if ($child->nodeName !== 'html' || $child->hasChildNodes()) { 
@@ -127,10 +121,10 @@ class View {
 					else $elements[] = $this->createElement($child);
 				}
 			}
-		/*} else {
-			die('ok');
+		} else {
+			// Create Elements object from each nodes from the tree
 			foreach ($tree->childNodes as $child) {
-				if ($child->nodeName=='html' && $child->hasChildNodes()) {
+				if ($child->nodeName === 'html' && $child->hasChildNodes()) {
 			    	foreach ($child->childNodes as $child2) {
 						if ( $child2->nodeName === 'body' && $child2->hasChildNodes() ) {
 			    			foreach ($child2->childNodes as $child3) {
@@ -140,7 +134,8 @@ class View {
 			    	}
 				}
 			}
-		}*/
+		}
+		
 		$elements = array_filter($elements);		
 		return $elements;
 	}
@@ -201,13 +196,34 @@ class View {
 	}
 	
 	/**
+	 * Get an element from a group of elements
+	 * 
+	 * @param	Element	the element to inject the view into
+	 * @param	string	where to inject the group (before|after|top|bottom)
+	 * @return	self
+	 */
+	private function getElementGroup( $selector ) {
+		foreach($this->elements as $element) {
+			$nodeType = get_class($element);
+			if ($nodeType === 'Element') {
+				if (selector($selector, $element->element)) {
+					return $element;
+				} else if ($element->element->hasChildNodes()) {
+					$child = $element->getElement($selector);
+					if ($child) return $child;
+				}
+			}
+		}
+	}
+	
+	/**
 	 * Inject group of elements
 	 * 
 	 * @param	Element	the element to inject the view into
 	 * @param	string	where to inject the group (before|after|top|bottom)
 	 * @return	self
 	 */
-	public function injectGroup( $element = null, $where = null ) {
+	private function injectGroup( $element = null, $where = null ) {
 		if ( isset($where) && $where !== "bottom" && $where !== "top" && $where !== "before" && $where !== "after" ) {
 			trigger_error("Supplied argument is not a valid string", E_USER_NOTICE);
 			return $this;
@@ -236,7 +252,7 @@ class View {
 
 		return $this;
 	}
-	
+		
 	/**
 	 * Any method called to the group pass through this method. 
 	 * This method has not been tested with other callss than inject, please test before using.
@@ -247,12 +263,15 @@ class View {
 	 * @return	self
 	 */
 	public function __call( $method, $args ) {
-		if(count($this->elements) == 1) {
+		if(count($this->elements) === 1) {
 			return current($this->elements)->__call($method, $args);
 		} else {
 			switch($method) {
 				case 'inject':
 					call_user_func_array([$this, 'injectGroup'], $args);
+					break;
+				case 'getElement':
+					return call_user_func_array([$this, 'getElementGroup'], $args);
 					break;
 				default: 
 					foreach ($this->elements as $element) { 

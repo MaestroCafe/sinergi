@@ -65,6 +65,14 @@ class Sinergi {
 	public static $production = true, $development = false;
 		
 	/**
+	 * Track if all methods have been successfully executed before __destruct so we know 
+	 * __desctruct is not being called from a die() or exit() somewhere else in the application
+	 * 
+	 * @var	bool
+	 */
+	private $complete = false;
+	
+	/**
 	 * Initialize the application.
 	 * 
 	 * @param	bool	checks process mode
@@ -108,6 +116,8 @@ class Sinergi {
 				#require Path::$core."loader/process.php";
 				break;
 		}
+		
+		$this->complete = true;
 	}
 	
 	/**
@@ -222,7 +232,7 @@ class Sinergi {
 	 * @return void
 	 */
 	public function __destruct() {
-		if ($this::$mode === 'request' && !empty(DOM::$dom)) {
+		if ($this->complete && $this::$mode === 'request' && !empty(DOM::$dom)) {
 			echo DOM::write();
 		}
 	}

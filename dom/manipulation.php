@@ -96,12 +96,7 @@ class DOMManipulation {
 			trigger_error("Supplied argument is not a valid string", E_USER_NOTICE);
 			return $this;
 		}
-		
-		// Check if element is a DOMDocument
-		if (get_class($element) !== 'DOMDocument') {
-			
-		}
-				
+						
 		if ( !is_object($element) || (get_class($element) !== 'DOMDocument' && !isset($element->element))) {
 			trigger_error("Supplied argument is not a valid Element resource", E_USER_NOTICE);
 			return $this;

@@ -37,24 +37,20 @@ class Controller {
 	 * @var	string
 	 */
 	private $controller;
-   
-   /**
-    * Instantiate a controller and load the method provided with the arguments provided.
-    * 
-    * @param	string	the controller's name
-    * @param	string	the method to execute
-    * @param	array	the arguments to pass to the method
-    * @return	void
-    */
+	
+	/**
+	 * Instantiate a controller and load the method provided with the arguments provided.
+	 * 
+	 * @param	string	the controller's name
+	 * @param	string	the method to execute
+	 * @param	array	the arguments to pass to the method
+	 * @return	void
+	 */
 	public function __construct( $controller, $method = null, $args = [] ) {
 		$controllerName = preg_replace("/.*\/(.*)$/", "$1", strtolower($controller)); // Get controller name
 				
 		$this->controller = new $controllerName;
 				
-		if (method_exists($this->controller, 'base')) {
-			$this->controller->base();
-		}
-		
 		$this->traitsConstructors();
 		
 		if (isset($method)) {
@@ -63,12 +59,12 @@ class Controller {
    }
    
    /**
-    * Sinergi uses the method _helpername_construct() as the helper constructor. So we need to get a list of helpers that the controller uses.
+	* Sinergi uses the method _helpername_construct() as the helper constructor. So we need to get a list of helpers that the controller uses.
 	* Note that there is no way to call the function in a specific helper, so there could be a mix up if a helper has the same name as another method in
 	* another helper or in the controller.
-    * 
-    * @return	void
-    */
+	* 
+	* @return	void
+	*/
    private function traitsConstructors() {
 		foreach(class_uses($this->controller) as $helper) {
 			$helperName = "_" . preg_replace("/.*\\\(.*)$/", "$1", strtolower($helper)) . "Construct"; // Get helper name
@@ -79,22 +75,23 @@ class Controller {
 		}
    
    }
-   
-   /**
-    * Sinergi uses the method _helpername_construct() as the helper constructor. So we need to get a list of helpers that the controller uses.
-	* Note that there is no way to call the function in a specific helper, so there could be a mix up if a helper has the same name as another method in
-	* another helper or in the controller.
-    * 
-    * @return	void
-    */
-   public function __destruct() {
-		foreach(class_uses($this->controller) as $helper) {
-			$helper_name = "_" . preg_replace("/.*\\\(.*)$/", "$1", strtolower($helper)) . "Destruct"; // Get helper name
-			
-			if(method_exists($this->controller, $helper_name)) { // Check if helper constructor exists
-				$this->controller->$helper_name();
+
+	/**
+	 * Sinergi uses the method _helpername_construct() as the helper constructor. So we need to get a list of helpers that the controller uses.
+	 * Note that there is no way to call the function in a specific helper, so there could be a mix up if a helper has the same name as another method in
+	 * another helper or in the controller.
+	 * 
+	 * @return	void
+	 */
+	public function __destruct() {
+		if (is_object($this->controller)) {
+			foreach(class_uses($this->controller) as $helper) {
+				$helper_name = "_" . preg_replace("/.*\\\(.*)$/", "$1", strtolower($helper)) . "Destruct"; // Get helper name
+				
+				if(method_exists($this->controller, $helper_name)) { // Check if helper constructor exists
+					$this->controller->$helper_name();
+				}
 			}
 		}
-   
    }
 }
