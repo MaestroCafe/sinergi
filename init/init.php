@@ -181,6 +181,8 @@ class Sinergi {
 		require Path::$core . "classes/view.php";			// Get the view class
 
 		require Path::$core . "db/db.php";			// Get the DB classes
+
+		require Path::$core . "files/files.php";			// Get the DB classes
 	}
 	
 	/**

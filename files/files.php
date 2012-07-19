@@ -1,10 +1,63 @@
 <?php
 
+/**
+ * Sinergi is an open source application development framework for PHP
+ *
+ * Requires PHP version 5.4
+ *
+ * LICENSE: This source file is subject to the GNU General Public License 
+ * version 2.0 (GPL-2.0) that is bundled with this package in the file 
+ * LICENSE-GPL.txt and is available through the world-wide-web at the 
+ * following URI: http://www.opensource.org/licenses/GPL-2.0. If you did 
+ * not receive a copy of the GNU General Public License version 2.0 and are 
+ * unable to obtain it through the web, please send a note to admin@sinergi.co 
+ * so we can mail you a copy immediately.
+ *
+ * @package		sinergi
+ * @author		Sinergi Team
+ * @copyright	2010-2012 Sinergi Team
+ * @license		http://www.opensource.org/licenses/GPL-2.0 GNU General Public License version 2.0 (GPL-2.0)
+ * @link		https://github.com/sinergi/sinergi
+ * @since		Version 1.0
+ */
+ 
+/**
+ * File manager
+ *
+ * @category	core
+ * @package		sinergi
+ * @author		Sinergi Team
+ * @link		https://github.com/sinergi/sinergi
+ */
+
 class File {
-	protected $ftp_connection; // FTP Connection for uploading a file
-	protected $file_pointer; // Pointer in file
-	protected $path; // Path of file
-	public $content = ""; // File content
+	/**
+	 * FTP Connection for uploading a file
+	 * 
+	 * @var	FTP stream
+	 */
+	private $ftpConnection;
+	
+	/**
+	 * Pointer in file
+	 * 
+	 * @var	file pointer resource
+	 */
+	private $filePointer;
+	
+	/**
+	 * Path of file
+	 * 
+	 * @var	string
+	 */
+	private $path;
+	
+	/**
+	 * File content
+	 * 
+	 * @var	string
+	 */
+	public $content = "";
 	
 	/**
 	 * 
@@ -16,12 +69,12 @@ class File {
 	 */
 	public function __construct($path=null, $create=true) {
 		if (isset($path)) {
-			$path = $this->clean_path($path);
+			$path = $this->cleanPath($path);
 							
 			if(!file_exists($path) && $create) { // Create the file and path
 				$dir = dirname($path);						
-				$this->create_dir($dir); // Create directory if directory does not exists
-				$this->file_pointer = fopen($path, 'w+');
+				$this->createDir($dir); // Create directory if directory does not exists
+				$this->filePointer = fopen($path, 'w+');
 			}					
 		}
 		$this->path = $path;
@@ -36,8 +89,8 @@ class File {
 	 * @return const
 	 */
 	public function __destruct() {
-		if (isset($this->file_pointer)) {
-			fclose($this->file_pointer);
+		if (isset($this->filePointer)) {
+			fclose($this->filePointer);
 		}
 	}
 	
@@ -62,11 +115,11 @@ class File {
 	 * @return const
 	 */
 	public function append($str) {
-		$this->open_file();
+		$this->openFile();
 		/* Move the file pointer at the end of the file */
-		fseek($this->file_pointer, 0, SEEK_END);
+		fseek($this->filePointer, 0, SEEK_END);
 		
-		fputs($this->file_pointer, $str);
+		fputs($this->filePointer, $str);
 		
 		return $this;
 	}
@@ -80,7 +133,7 @@ class File {
 	 * @return const
 	 */
 	public function copy($dest) {
-		$dest = $this->clean_path($dest);
+		$dest = $this->cleanPath($dest);
 				
 		if(copy($this->path, $dest)) {
 			$this->path = $dest;
@@ -110,90 +163,90 @@ class File {
 	  * @access private
 	  * @return const
 	  */ 
-	public function duplicate($new_path=null) {
-		if (!isset($new_path)) {
+	public function duplicate($newPath=null) {
+		if (!isset($newPath)) {
 			$sufix = 1;
-			$ext = $this->get_extention();
-			$new_path = '';
+			$ext = $this->getExtention();
+			$newPath = '';
 			
 			do {
 				$sufix++;
-				$new_path = preg_replace('/\\' . $ext . '/', '_' . $sufix . $ext, $this->path);
-			} while(file_exists($new_path));
+				$newPath = preg_replace('/\\' . $ext . '/', '_' . $sufix . $ext, $this->path);
+			} while(file_exists($newPath));
 		}
-		$new_path = $this->clean_path($new_path);
+		$newPath = $this->cleanPath($newPath);
 		
-		$this->create_dir(dirname($new_path));
+		$this->createDir(dirname($newPath));
 		
-		$this->copy($new_path);
+		$this->copy($newPath);
 		
 		return $this;
 	}
 	
 	/**
-	 * get_creation_date
+	 * getCreationDate
 	 * 
 	 * @param $provider
 	 * @var bool
 	 * @access private
 	 * @return const
 	 */
-	public function get_creation_date() {
+	public function getCreationDate() {
 		return stat($this->path)['ctime'];
 	}
 	
 	/**
-	 * Get_extention
+	 * getExtention
 	 * 
 	 * @param $provider
 	 * @var bool
 	 * @access private
 	 * @return const
 	 */
-	public function get_extention() {
+	public function getExtention() {
 		preg_match('/\.([a-zZ-Z0-0]*)$/', $this->path, $matches);
 		return $matches[0];
 	}
 	
 	/**
-	 * Get_full_path
+	 * getFullPath
 	 * 
 	 * @param $provider
 	 * @var bool
 	 * @access private
 	 * @return const
 	 */
-	public function get_full_path() {
+	public function getFullPath() {
 		return $this->path;
 	}
 	
 	/**
-	 * Get_modification_date
+	 * getModificationDate
 	 * 
 	 * @param $provider
 	 * @var bool
 	 * @access private
 	 * @return const
 	 */
-	public function get_modification_date() {
+	public function getModificationDate() {
 		return stat($this->path)['mtime'];
 	}
 	
 	/**
-	 * Get_name
+	 * getName
 	 *
 	 */ 
-	public function get_name() {
+	public function getName() {
 		preg_match('/[a-zZ-Z0-0\_\-\.\,\%]*$/', $this->path, $matches);
 		
 		return $matches[0];
 	}
 	
 	/**
-	 * Get_size
+	 * getSize
 	 *
 	 */ 
-	public function get_size() {
+	public function getSize() {
 		return file_exists($this->path) ? filesize($this->path) : 0;
 	}
 	
@@ -202,7 +255,7 @@ class File {
 	 *
 	 */ 
 	public function move( $dest ) {
-		$dest = $this->clean_path($dest);
+		$dest = $this->cleanPath($dest);
 		$origin = $this->path;
 		
 		$this->copy($dest);
@@ -221,9 +274,9 @@ class File {
 	  * @access private
 	  * @return const
 	  */ 
-	public function move_uploaded($origin, $destination) {
-		$this->create_dir(dirname($destination)); // Create directories if they don't exists
-		$destination = $this->clean_path($destination); // Clean the destination path
+	public function moveUploaded($origin, $destination) {
+		$this->createDir(dirname($destination)); // Create directories if they don't exists
+		$destination = $this->cleanPath($destination); // Clean the destination path
 		
 		$this->path = $origin; // Remove the DOCUMENT_ROOT from the uploaded file path, because it is in the system's tmp folder
 		
@@ -240,11 +293,11 @@ class File {
 	 *
 	 */ 
 	public function prepend($str) {
-		$this->open_file();
+		$this->openFile();
 		/* Move the file pointer at the begining of the file */
-		fseek($this->file_pointer, 0);
+		fseek($this->filePointer, 0);
 		
-		fputs($this->file_pointer, $str);
+		fputs($this->filePointer, $str);
 		
 		return $this;
 	}
@@ -254,10 +307,10 @@ class File {
 	 *
 	 */ 
 	public function read() {
-		$this->open_file();
+		$this->openFile();
 		$filesize = filesize($this->path);
 		if($filesize>0) {
-			$this->content = fread($this->file_pointer, $filesize);
+			$this->content = fread($this->filePointer, $filesize);
 		}
 		
 		return $this;
@@ -267,7 +320,7 @@ class File {
 	 * Rename a file
 	 */ 
 	public function rename($new_name) {
-		$new_name = $this->clean_path($new_name);
+		$new_name = $this->cleanPath($new_name);
 		rename($this->path, $new_name);
 	}
 	
@@ -276,12 +329,12 @@ class File {
 	 *
 	 */ 
 	public function write($string) {
-		if (isset($this->file_pointer)) {
-			fclose($this->file_pointer);
+		if (isset($this->filePointer)) {
+			fclose($this->filePointer);
 		}
-		$this->file_pointer = fopen($this->path, 'w');
+		$this->filePointer = fopen($this->path, 'w');
 		
-		fwrite($this->file_pointer , $string);
+		fwrite($this->filePointer , $string);
 		
 		return $this;
 	}
@@ -294,15 +347,15 @@ class File {
 	 * @access private
 	 * @return const
 	 */
-	public function upload($upload_file_name, $server_settings) {
-		$path = dirname($upload_file_name);
-		if ($this->connect_ftp(array_merge($server_settings, ['path'=>$path]))) {
-			$this->open_file();
+	public function upload($uploadFileName, $serverSettings) {
+		$path = dirname($uploadFileName);
+		if ($this->connectFtp(array_merge($serverSettings, ['path'=>$path]))) {
+			$this->openFile();
 			
-			ftp_pasv($this->ftp_connection, true);
+			ftp_pasv($this->ftpConnection, true);
 			
-			if (!ftp_fput($this->ftp_connection, basename($upload_file_name), $this->file_pointer, FTP_BINARY)) {
-				$this->ftp_connection = null;
+			if (!ftp_fput($this->ftpConnection, basename($uploadFileName), $this->filePointer, FTP_BINARY)) {
+				$this->ftpConnection = null;
 				trigger_error('Failed uploading file to depo.');
 				return false;
 			}
@@ -317,7 +370,7 @@ class File {
 	 * @access private
 	 * @return const
 	 */
-	protected function connect_ftp($settings) {
+	private function connectFtp($settings) {
 		// Clean settings, cause we tolerate messy settings : ['username'=>'user', 'server'=>'server', 'password']
 		$server = $username = $password = $path = null;
 		foreach($settings as $key=>$value) {
@@ -344,25 +397,25 @@ class File {
 			}
 		}
 		
-		if (!isset($this->ftp_connection)) {
-			if (!$this->ftp_connection = ftp_connect(($server=="localhost" ? "127.0.0.1" : $server))) { //  Try to connect to server
-				$this->ftp_connection = null;
+		if (!isset($this->ftpConnection)) {
+			if (!$this->ftpConnection = ftp_connect(($server=="localhost" ? "127.0.0.1" : $server))) { //  Try to connect to server
+				$this->ftpConnection = null;
 				trigger_error('Server not found.');
 				return false;
 			}
 			
-			if (!@ftp_login($this->ftp_connection, $username, $password)) { // Log into server
-				$this->ftp_connection = null;
+			if (!@ftp_login($this->ftpConnection, $username, $password)) { // Log into server
+				$this->ftpConnection = null;
 				trigger_error('Login incorrect.');
 				return false;
 			}
 			
-			if (isset($path) && !@ftp_chdir($this->ftp_connection, $path)) { // If there is a path and path does not exists
+			if (isset($path) && !@ftp_chdir($this->ftpConnection, $path)) { // If there is a path and path does not exists
 				$dirs = explode("/", str_replace('//', '/', $path));
 				foreach ($dirs as $dir) {
-				    if (!empty($dir) && !@ftp_chdir($this->ftp_connection, $dir)) {
-				    	if (!ftp_mkdir($this->ftp_connection, $dir) || !ftp_chdir($this->ftp_connection, $dir)) {
-							$this->ftp_connection = null;
+				    if (!empty($dir) && !@ftp_chdir($this->ftpConnection, $dir)) {
+				    	if (!ftp_mkdir($this->ftpConnection, $dir) || !ftp_chdir($this->ftpConnection, $dir)) {
+							$this->ftpConnection = null;
 				    		trigger_error('Could not change directory');
 				    		return false;	
 				    	}
@@ -383,9 +436,9 @@ class File {
 	 * @access private
 	 * @return const
 	 */
-	protected function open_file() {
-		if (!isset($this->file_pointer)) {
-			$this->file_pointer = fopen($this->path, 'r+');
+	private function openFile() {
+		if (!isset($this->filePointer)) {
+			$this->filePointer = fopen($this->path, 'r+');
 		}
 	}
 	
@@ -397,7 +450,7 @@ class File {
 	 * @access private
 	 * @return const
 	 */
-	protected function clean_path($path) {
+	private function cleanPath($path) {
 		if (substr($path, 0, strlen(DOCUMENT_ROOT))!=DOCUMENT_ROOT) {
 			$path = DOCUMENT_ROOT.$path;
 		}
@@ -412,11 +465,10 @@ class File {
 	 * @access private
 	 * @return const
 	 */
-	protected function create_dir($dir) {
+	private function createDir($dir) {
 		if (substr($dir, 0, strlen(DOCUMENT_ROOT))!=DOCUMENT_ROOT) $dir = str_replace('//', '/', DOCUMENT_ROOT.$dir); // Create real path
 		if(!is_dir($dir)) { // Create directory if directory does not exists
 			mkdir($dir, 0777, true);
 		}
 	}
 }
-?>
