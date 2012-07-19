@@ -175,10 +175,12 @@ class Sinergi {
 		}
 		
 		require Path::$core . "classes/hooks.php";				// Get the hook class
-		require Path::$core . "classes/model.php";				// Get the model class
-		require Path::$core . "classes/process.php";				// Get the process class	
+
+		require Path::$core . "classes/process.php";			// Get the process class	
 				
 		require Path::$core . "classes/view.php";			// Get the view class
+
+		require Path::$core . "db/db.php";			// Get the DB classes
 	}
 	
 	/**

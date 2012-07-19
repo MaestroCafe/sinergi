@@ -31,9 +31,10 @@
 
 namespace sinergi\db;
 
-use PDO, ArrayObject;
+use PDO, 
+	ArrayObject;
 
-class Row extends ArrayObject {
+class Result extends ArrayObject {
 	/**
 	 * 
 	 * 
@@ -42,7 +43,7 @@ class Row extends ArrayObject {
 	 * @access private
 	 * @return const
 	 */
-	protected $connection, $table_name, $db_type, $slashes;
+	protected $connection, $tableName, $dbType, $slashes;
 	
 	/**
 	 * 
@@ -52,10 +53,10 @@ class Row extends ArrayObject {
 	 * @access private
 	 * @return const
 	 */
-	public function __construct($connection, $table_name, $db_type, $slashes) {
+	public function __construct($connection, $tableName, $dbType, $slashes) {
 		$this->connection = $connection;
-		$this->table_name = $table_name;
-		$this->db_type = $db_type;
+		$this->tableName = $tableName;
+		$this->dbType = $dbType;
 		$this->slashes = $slashes;
 	}
 
@@ -70,21 +71,21 @@ class Row extends ArrayObject {
 	public function update($field, $value=null) {
 		if (!is_array($field)) { $field = [$field=>$value]; } // Options
 		
-		$bind_count = 0;
+		$bindCount = 0;
 				
 		// Build the "set" part of the query
-		$query_set = " SET ";
+		$querySet = " SET ";
 		
 		foreach ($field as $key=>$value) {
-			$bind_count++;
-			$query_set .= "{$this->slashes[$this->db_type][0]}{$key}{$this->slashes[$this->db_type][1]}=:value{$bind_count}, ";
-			$binds["value{$bind_count}"] = $value;
+			$bindCount++;
+			$querySet .= "{$this->slashes[$this->dbType][0]}{$key}{$this->slashes[$this->dbType][1]}=:value{$bindCount}, ";
+			$binds["value{$bindCount}"] = $value;
 			// Store new values to change them in the object after the update
-			$new_values[$key] = $value;
+			$newValues[$key] = $value;
 		}
-		$query_set = substr($query_set, 0, -2);
+		$querySet = substr($querySet, 0, -2);
 		
-		$this->query("UPDATE", $binds, $bind_count, $query_set, $new_values);
+		$this->query("UPDATE", $binds, $bindCount, $querySet, $newValues);
 		
 		return $this;
 	}
@@ -112,21 +113,21 @@ class Row extends ArrayObject {
 	public function increase($field, $value=1) {
 		if (!is_array($field)) { $field = [$field=>$value]; } // Options
 		
-		$bind_count = 0;
+		$bindCount = 0;
 				
 		// Build the "set" part of the query
-		$query_set = " SET ";
+		$querySet = " SET ";
 		
 		foreach ($field as $key=>$value) {
-			$bind_count++;
-			$query_set .= "{$this->slashes[$this->db_type][0]}{$key}{$this->slashes[$this->db_type][1]}={$this->slashes[$this->db_type][0]}{$key}{$this->slashes[$this->db_type][1]}+:value{$bind_count}, ";
-			$binds["value{$bind_count}"] = $value;
+			$bindCount++;
+			$querySet .= "{$this->slashes[$this->dbType][0]}{$key}{$this->slashes[$this->dbType][1]}={$this->slashes[$this->dbType][0]}{$key}{$this->slashes[$this->dbType][1]}+:value{$bindCount}, ";
+			$binds["value{$bindCount}"] = $value;
 			// Store new values to change them in the object after the update
-			$new_values[$key] = $this->$key + $value;
+			$newValues[$key] = $this->$key + $value;
 		}
-		$query_set = substr($query_set, 0, -2);
+		$querySet = substr($querySet, 0, -2);
 		
-		$this->query("UPDATE", $binds, $bind_count, $query_set, $new_values);
+		$this->query("UPDATE", $binds, $bindCount, $querySet, $newValues);
 		
 		return $this;
 	}
@@ -153,30 +154,30 @@ class Row extends ArrayObject {
 	 * @access private
 	 * @return const
 	 */
-	protected function query($query, $binds = [], $bind_count = 0, $query_set="", $new_values=null) {
+	protected function query($query, $binds = [], $bindCount = 0, $querySet="", $newValues=null) {
 		$query = strtoupper($query);
 		
 		// Build the "where" part of the query
-		$query_where = " WHERE ";
+		$queryWhere = " WHERE ";
 		
 		foreach($this as $key=>$value) {
-			$bind_count++;
+			$bindCount++;
 			if (!empty($value)) {
-				$query_where .= "{$this->slashes[$this->db_type][0]}{$key}{$this->slashes[$this->db_type][1]}=:value{$bind_count} AND ";
-				$binds["value{$bind_count}"] = $value;
+				$queryWhere .= "{$this->slashes[$this->dbType][0]}{$key}{$this->slashes[$this->dbType][1]}=:value{$bindCount} AND ";
+				$binds["value{$bindCount}"] = $value;
 			}
 		}
-		$query_where = substr($query_where, 0, -5);
+		$queryWhere = substr($queryWhere, 0, -5);
 				
 		// Build query
-		$query .= " {$this->slashes[$this->db_type][0]}{$this->table_name}{$this->slashes[$this->db_type][1]}{$query_set}{$query_where};";
+		$query .= " {$this->slashes[$this->dbType][0]}{$this->tableName}{$this->slashes[$this->dbType][1]}{$querySet}{$queryWhere};";
 				
 		$sth = $this->connection->prepare($query);
 		$sth->execute($binds);
 		
 		// Change values of current object to updated object
-		if (is_array($new_values)) {
-			foreach($new_values as $key=>$value) {
+		if (is_array($newValues)) {
+			foreach($newValues as $key=>$value) {
 				$this->$key = $value;
 				$this[$key] = $value;
 			}
