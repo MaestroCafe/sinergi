@@ -30,9 +30,6 @@
  * @link		https://github.com/sinergi/sinergi
  */
 
-error_reporting(E_ALL);
-ini_set('display_errors', 'On');
-
 header_remove('X-Powered-By'); // Remove PHP from the document's header.
 
 use sinergi\classes\AutoLoader,
@@ -141,7 +138,7 @@ class Sinergi {
 		}
 		
 		// Report error in the application/debugger if the application is running in development environment.
-		if ($this::$environment == 'development') {
+		if ($this::$environment === 'development') {
 			error_reporting(E_ALL);
 			ini_set('display_errors', 'On');
 		}
@@ -244,65 +241,3 @@ class Sinergi {
 }
 
 exit;
-
-/**
- * Include routes. 
- *
- */
-#if (!API_EXECUTION && !PROCESS_EXECUTION) {
-#	if (file_exists(CONFIGS.'routes.php')) require CONFIGS.'routes.php';
-#	
-#	foreach ($plugins as $namespace=>$plugin) { if (function_exists("\\plugins\\{$namespace}\\routes")) call_user_func("\\plugins\\{$namespace}\\routes"); }
-#}
-
-/**
- * Error loader. 
- *
- */
-#function error($error) {
-#	switch($error) {
-#		case 404: case 'not_found': // Error 404
-#			header("HTTP/1.1 404 Not Found");
-#			if (API_EXECUTION) { // API error 404
-#				header('Content-Type: application/json; charset=utf-8');
-#				if (file_exists(ERRORS."/api_not_found.json")) require ERRORS."/api_not_found.json";
-#				else if (file_exists(ERRORS."/api_not_found.php")) require ERRORS."/api_not_found.php";
-#				else if (file_exists(ERRORS."/api_not_found.html")) require ERRORS."/api_not_found.html";
-#				else if (file_exists(ERRORS."/not_found.html")) require ERRORS."/not_found.html";
-#				else if (file_exists(ERRORS."/not_found.php")) require ERRORS."/not_found.php";
-#			} else { // Normal error 404
-#				if (file_exists(ERRORS."/not_found.html")) require ERRORS."/not_found.html";
-#				else if (file_exists(ERRORS."/not_found.php")) require ERRORS."/not_found.php";
-#			}
-#			break;
-#		default: // Default behavior
-#			if (file_exists(ERRORS."/{$error}.html")) require ERRORS."/{$error}.html";
-#			else if (file_exists(ERRORS."/{$error}.php")) require ERRORS."/{$error}.php";
-#			break;
-#	}
-#	exit;
-#}
-
-/**
- * Load static files
- * 
- */
-if (!API_EXECUTION && !PROCESS_EXECUTION) {
-	foreach ($plugins as $namespace=>$plugin) { if (function_exists("\\plugins\\{$namespace}\\staticFiles")) call_user_func("\\plugins\\{$namespace}\\staticFiles"); }
-}
-
-/**
- * Load Dynamic files 
- *
- */
-if (!API_EXECUTION && !PROCESS_EXECUTION) {
-	require CORE.'loader/dynamic.php';
-}
-
-/**
- * Load API files 
- *
- */
-else if (API_EXECUTION) {
-	require CORE.'loader/api.php';
-}
