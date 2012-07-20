@@ -85,15 +85,15 @@ class Sinergi {
 		
 		$this->loadClasses(); // Load all required classes
 		
-		$this->loadModules(); // Load modules after the path class because we need the path to load the modules
-		
-		Hooks::run('path'); // Run all the path hooks
-
 		$this->loadSettings();
 		Hooks::run('settings'); // Run all the request hooks
 		
 		$this->defaults();
 		Hooks::run('defaults'); // Run all the defaults hooks
+
+		$this->loadModules(); // Load modules after the path class because we need the path to load the modules
+		
+		Hooks::run('path'); // Run all the path hooks
 		
 		new Request; // Defines the default paths.
 		Hooks::run('request'); // Run all the defaults hooks
