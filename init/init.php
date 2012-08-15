@@ -175,6 +175,8 @@ class Sinergi {
 		require Path::$core . "classes/process.php";			// Get the process class	
 				
 		require Path::$core . "classes/view.php";			// Get the view class
+				
+		require Path::$core . "classes/static_file.php";			// Get the static class
 
 		require Path::$core . "db/db.php";			// Get the DB classes
 

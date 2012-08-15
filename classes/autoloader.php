@@ -62,7 +62,13 @@ class AutoLoader {
 		foreach($matches as $namespace=>$path) {
 			if (preg_match("/^{$namespace}\\\/i", $className)) {
 				if ($namespace === 'modules') {
-					require_once $path . preg_replace('!^([^/]+)/([^/]+)!', '$1/$2s', str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1)))) . ".php";
+					// Load classes in direcotries
+					if (preg_match('!^([^\\\]*)\\\([^\\\]*)\\\([^\\\]*)\\\([^\\\]*)!', $className)) {
+						require_once $path . preg_replace('!^([^/]+)/([^/]+)/([^/]+)!', '$1/$2/$3', str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1)))) . ".php";
+					// Load default classes
+					} else {
+						require_once $path . preg_replace('!^([^/]+)/([^/]+)!', '$1/classes/$2', str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1)))) . ".php";
+					}
 				} else {
 					require_once $path . str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1))) . ".php";
 				}
