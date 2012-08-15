@@ -34,50 +34,70 @@ namespace sinergi;
 
 use Path,
 	POSTMARKAPP_API_KEY,
-	POSTMARKAPP_MAIL_FROM_ADDRESS,
-	POSTMARKAPP_MAIL_FROM_NAME,
 	Mail_Postmark;
 
 global $settings;
 
-if (!file_exists(Path::$libraries . "Postmark/Postmark.php")) trigger_error("You need to add postmark-php as a submodule of your application", E_USER_ERROR);
-if (!isset($settings['postmark']['api_key'])) trigger_error("You need to define a Postmark API Key", E_USER_ERROR);
+if (!file_exists(Path::$libraries . "Postmark/Postmark.php")) trigger_error("You need to add postmark-php as a submodule of your application in application/libraries/Postmark", E_USER_ERROR);
+if (!isset($settings['postmark']['api_key'])) trigger_error('You need to define a Postmark API Key in your settings as $settings["postmark"]["api_key"]', E_USER_ERROR);
 
 require_once Path::$libraries . "Postmark/Postmark.php";
 if (!defined('POSTMARKAPP_API_KEY')) define('POSTMARKAPP_API_KEY', $settings['postmark']['api_key']);
 
 trait Email {
-	protected function compose($from_name, $from_email, $to_name, $to_email, $file, $args=[]) {		
-		$body = str_replace('’', '\'', file_get_contents(APPLICATION.$file));
-				
+	/**
+	 * Compose a new email
+	 * 
+	 * @param	string
+	 * @param	string
+	 * @param	string
+	 * @param	string
+	 * @param	string
+	 * @param	array
+	 * @return	bool
+	 */
+	private function compose( $fromName, $fromEmail, $toName, $toEmail, $file, $args=[] ) {		
+		// Prepend path to file if it is not already
+		if (!preg_match('{^'.Path::$documentRoot.'}', $file)) {
+			$file = Path::$application . $file;
+		}
+		
+		// Get file content
+		if (!file_exists($file)) trigger_error('Email ('.$file.') file does not exists', E_USER_ERROR);
+		$body = str_replace('’', '\'', file_get_contents($file));
+		
+		// Replace tags by values
 		if (count($args)) {
 			$body = $this->_vsprintf($body, $args);
 		}
 		
+		// Get title
 		preg_match('/<title>(.*)<\/title>/', $body, $subject);
 		$subject = mb_convert_encoding(html_entity_decode(strip_tags($subject[0])), 'ISO-8859-1', 'HTML-ENTITIES');
 				
 		// Create a message and send it
-		if(Mail_Postmark::compose()
-		    ->from($from_email, $from_name)
-		    ->addTo($to_email, $to_name)
-		    ->subject($subject)
-		    ->messageHtml($body)
-		    ->send()) 
-		    	{ return true; }
-		
-		return false;
+		if(
+			Mail_Postmark::compose()
+				->from($fromEmail, $fromName)
+				->addTo($toEmail, $toName)
+				->subject($subject)
+				->messageHtml($body)
+				->send()
+		) {	
+			return true;
+		} else {
+			return false;
+		}
 	}
 	
 	/**
-	 * Same as vsprintf but compatible with HTML, in other words, it search and replace %s
+	 * Same as vsprintf but compatible with HTML, it search and replace %s
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @param	string
+	 * @param	array
+	 * @return	string
 	 */
-	protected function _vsprintf($format, $args) {
+	private function _vsprintf($format, $args) {
 		$search = '%s';
 		foreach ($args as $replace) {
 			$format = $this->_str_replace_once($search, $replace, $format);
@@ -88,12 +108,12 @@ trait Email {
 	/**
 	 * Search and replace only once
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @param	string
+	 * @param	string
+	 * @param	string
+	 * @return	string
 	 */
-	protected function _str_replace_once($search, $replace, $subject) {
+	private function _str_replace_once($search, $replace, $subject) {
 		$res = strpos($subject, $search);
 		if ($res === false) {
 			return $subject;
