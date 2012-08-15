@@ -45,6 +45,8 @@ abstract class Hooks {
 	private $hooks = [
 		'configs',		// Hook after all inital configurations
 		'request',		// Hook before the request is loaded
+		'api',			// Hook before the api is loaded
+		'process',		// Hook before the process is loaded
 		'routes',		// Allow a hook to manipulate the routes
 		'controller',	// Allow a hook to manipulate the controllers matched with routes
 		'dom',			// Allow a hook to manipulate the DOM before output

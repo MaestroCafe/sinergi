@@ -62,6 +62,13 @@ class Sinergi {
 	public static $production = true, $development = false;
 		
 	/**
+	 * A list of all loaded modules
+	 * 
+	 * @var	array
+	 */
+	public static $modules = [];
+		
+	/**
 	 * Track if all methods have been successfully executed before __destruct so we know 
 	 * __desctruct is not being called from a die() or exit() somewhere else in the application
 	 * 
@@ -106,10 +113,15 @@ class Sinergi {
 				new sinergi\RequestLoader;
 				break;
 			case 'api':
+				Hooks::run('api'); // Run all process hooks
+				
 				#require Path::$core."loader/api.php";
 				break;
 			case 'process':
-				#require Path::$core."loader/process.php";
+				Hooks::run('process'); // Run all process hooks
+				
+				require Path::$core."loader/process.php";
+				new sinergi\ProcessLoader;
 				break;
 		}
 		
@@ -165,23 +177,7 @@ class Sinergi {
 	private function loadClasses() {
 		require Path::$core . "classes/request.php";			// Get the request class
 		require Path::$core . "classes/autoloader.php";		// Get the autoloader class
-		
-		if ($this::$mode=='request') { // Get the classes that are only available in request mode
-			require Path::$core . "classes/controller.php";	// Get the controller class
-		}
-		
 		require Path::$core . "classes/hooks.php";				// Get the hook class
-
-		require Path::$core . "classes/process.php";			// Get the process class	
-				
-		require Path::$core . "classes/view.php";			// Get the view class
-				
-		require Path::$core . "classes/static_file.php";			// Get the static class
-
-		require Path::$core . "db/db.php";			// Get the DB classes
-
-		require Path::$core . "files/files.php";			// Get the DB classes
-		
 		require Path::$core . "functions/token.php";			// Get the token function
 	}
 	
@@ -222,9 +218,10 @@ class Sinergi {
 			$dirs = scandir(Path::$modules);
 			foreach ($dirs as $dir) {
 				if (substr($dir, 0, 1)!='.' && is_file(Path::$modules . "{$dir}/module.php")) {
+					$this::$modules[] = $dir;
 					require Path::$modules . "{$dir}/module.php"; // Get module
-					$moduleMooks = "modules\\{$dir}\\Module_hooks";
-					(new $moduleMooks)->_init(); // Register module's hooks
+					$moduleHooks = "modules\\{$dir}\\Module_hooks";
+					(new $moduleHooks)->_init(); // Register module's hooks
 				}
 			}
 		}
@@ -243,5 +240,3 @@ class Sinergi {
 	}
 	
 }
-
-exit;
