@@ -32,7 +32,8 @@
 
 namespace sinergi;
 
-use Request,
+use Controller,
+	Request,
 	Path,
 	sinergi\classes\Hooks;
 
@@ -42,7 +43,7 @@ class RequestLoader {
 	 * 
 	 * @var	string
 	 */
-	private $requestURN;
+	private $requestUrn;
 	
 	/**
 	 * A merge of the routes and controllers
@@ -64,25 +65,19 @@ class RequestLoader {
 	 * @return void
 	 */
 	public function __construct() {
-		global $routes;
-		
 		//$this->redirectURN(); // Redirect URN (See comment about this method)
 		
-		$this->requestURN = preg_replace("/\.".Request::$fileType."$/i", '', Request::$urn);
-		if ($this->requestURN === '/') $this->requestURN .= 'index';
+		$this->requestUrn = preg_replace("/\.".Request::$fileType."$/i", '', Request::$urn);
+		if ($this->requestUrn === '/') $this->requestUrn .= 'index';
 		
 		// Get routes
 		if (file_exists(Path::$configs . "routes.php")) {
-			require Path::$configs . "routes.php";
-			
-			Hooks::run('routes'); // Run all the routes hooks
-			
-			if (is_array($routes)) {
-				$this->routes = $routes;
-			}
+			$this->routes = require Path::$configs . "routes.php";
 		}
 		
-		$this->routes = array_merge($routes, $this->controllersRoutes());
+		$this->routes = array_merge($this->routes, $this->controllersRoutes());
+			
+		$this->routes = Hooks::run('routes', $this->routes); // Run all the routes hooks
 		
 		$this->controllers = $this->matchRoutes();
 		$this->loadController();
@@ -169,8 +164,7 @@ class RequestLoader {
 		
 		$controllers = [];
 		
-		$needle = ltrim($this->requestURN, '/');
-		while(strstr($needle, '//')) { $needle = str_replace('//', '/', $needle); }
+		$needle = preg_replace('!/{2,}!', '/', ltrim($this->requestUrn, '/'));
 		
 		// The needle method is a needle that considers the last part of the request path to be the name of the method used
 		// in the controller, thus, it uses the dirname as the needle.
@@ -182,37 +176,37 @@ class RequestLoader {
 		
 		// The needle path is a needle that will match the controller by path. If the request path is controller_name
 		// it needs to match controller_name/controller_name
-		if (basename($needle)!='index') {
-			if (preg_match('/\/$/', $needle)) {
-				$needle_path = $needle.basename($needle);
-			} else {
-				$needle_path = $needle.'/'.basename($needle);
-			}
+		if (basename($needle) !== 'index') {
+			$needle_path = rtrim($needle, '/') . '/' . basename($needle);
 		} else {
-			$needle_path = dirname($needle)."/".basename(dirname($needle));
+			$needle_path = dirname($needle) . '/' . basename(dirname($needle));
 		}
 		
 		// The needle path method is a needle that will match the controller by path and consider the last part to be 
 		// the method used in the controller If the request path is controller_name/method it needs to match 
 		// controller_name/controller_name
-		$needle_path_method = $needle_method.basename($needle_method);
+		$needle_path_method = $needle_method . basename($needle_method);
 		
 		// In the case where needle_method or needle_path_method would match, this would be the method used in the
 		// controller 
 		$method = basename($needle);
 		
+		// Match index files in directories
+		if (preg_match('!/$!', $needle)) $needle_index = "{$needle}index"; 
+		else $needle_index = $needle;
+		
 		$i = 0;
 		foreach ($this->routes as $route) {
-			// Replace un-escaped slashesby escaped slashes
+			// Replace un-escaped slashes by escaped slashes
 			$haystack = str_replace(['\/', '/'], ['/', '\/'], ltrim($route[0], '/'));
 							
 			// If route ends with a slash, we add the (index)? part at the end of the route because it can match an index file
-			if(substr($route[0], -1)==='/') {
+			if(preg_match('!/$!', $route[0])) {
 				$haystack = substr($haystack, 0, -2).'\/?(index)?';
 			}
 			
-			// Try to match the normal needle or the needle_path 
-			if(preg_match("/^{$haystack}$/i", $needle, $matches) || preg_match("/^{$haystack}$/i", $needle_path, $matches)) {
+			// Try to match the normal needle or the needle_path			
+			if(preg_match("/^{$haystack}$/i", $needle, $matches) || preg_match("/^{$haystack}$/i", $needle_path, $matches) || preg_match("/^{$haystack}$/i", $needle_index, $matches)) {
 				$controllers[$i][0] = $route[1];
 				$controllers[$i][1] = 'index';
 				if (isset($route[2]) && is_array($route[2])) {
@@ -222,6 +216,7 @@ class RequestLoader {
 				} else {
 					$controllers[$i][2] = [];
 				}
+				$controllers[$i][3] = isset($route[3]) ? $route[3] : null;
 				$i++;
 			
 				if (isset($route[2]) && is_array($route[2])) {
@@ -234,16 +229,17 @@ class RequestLoader {
 						foreach ($route[2] as $key=>$variable) {
 							$controllers[$i][2][$variable] = isset($matches[$key+1]) ? $matches[$key+1] : null;
 						}
+						$controllers[$i][3] = isset($route[3]) ? $route[3] : null;
 						$i++;
 					}
 
 					// Match index
 					$controllers[$i][0] = $route[1];
 					$controllers[$i][1] = 'index';
-					
 					foreach ($route[2] as $key=>$variable) {
 						$controllers[$i][2][$variable] = isset($matches[$key+1]) ? $matches[$key+1] : null;
 					}
+					$controllers[$i][3] = isset($route[3]) ? $route[3] : null;
 					$i++;
 				} else { // Also match last part as method name instead of index 
 					
@@ -253,11 +249,12 @@ class RequestLoader {
 						$controllers[$i][0] = substr($route[1], 0, -(strlen($method)+1));
 						$controllers[$i][1] = $method;
 						$controllers[$i][2] = [];
+						$controllers[$i][3] = isset($route[3]) ? $route[3] : null;
 						$i++;
 					}
 				}
 								
-			}
+			}			
 			
 			// Try to match the needle_method and needle_path_method
 			else if((preg_match("/^{$haystack}$/i", $needle_method, $matches) || preg_match("/^{$haystack}$/i", $needle_path_method, $matches)) && $method !== 'index' && !in_array(strtolower($method), $magic_methods)) {
@@ -268,7 +265,7 @@ class RequestLoader {
 				$i++;
 			}
 		}
-		
+				
 		return $controllers;
 	}
 	
@@ -278,47 +275,23 @@ class RequestLoader {
 	 * @return 
 	 */
 	private function loadController() {
-		Hooks::run('loader'); // Run all the loader hooks
-			
-		// Add each plugin in an array
-		/*$plugins_paths = [];
-		foreach ($plugins as $plugin) {
-			$plugins_paths[] = "plugins/{$plugin}";
-		}*/
-		
+		Hooks::run('controllers'); // Run all the loader hooks
+				
 		// Check each controllers
-		foreach ($this->controllers as $controller) {
+		foreach (array_reverse($this->controllers) as $controller) {
+			// Check if controller is for a module
+			$path = (!empty($controller[3]) ? Path::$documentRoot .'modules/' . $controller[3] . '/controllers/' : Path::$controllers);
+			
 			// Try to match the controller to a controller file
-			$filename = preg_replace("/.*\/(.*)$/", "$1", strtolower($controller[0]));
-			$files = [
-				strtolower($controller[0]),
-				strtolower($controller[0])."/index",
-				strtolower($controller[0])."/{$filename}"
-			];
-						
-			foreach($files as $file) {
-				// Plugin controller
-				/*foreach($plugins_paths as $plugin_path) {
-					if (substr($file, 0, strlen($plugin_path))==$plugin_path) {
-						// Check if controller exists
-						if (file_exists(DOCUMENT_ROOT."{$file}.php")) {
-							require_once DOCUMENT_ROOT."{$file}.php";
-							
-							if (method_exists($filename, $controller[1])) {
-								new \Controller($file, $controller[1], $controller[2]);
-								return true;
-							}
-						}
-					}
-				}*/
-				// Application controller
-				if (file_exists(Path::$controllers."{$file}.php")) {
-					require_once Path::$controllers."{$file}.php";
-										
-					if (method_exists($filename, $controller[1])) {
-						new \Controller($file, $controller[1], $controller[2]);
-						return true;
-					}
+			$filename = preg_replace("!.*/([^/]*)$!", "$1", strtolower($controller[0]));
+			$file = $path . strtolower($controller[0]);
+
+			if (file_exists("{$file}.php")) {
+				require_once "{$file}.php";
+									
+				if (method_exists($filename, $controller[1])) {
+					new Controller($file, $controller[1], $controller[2]);
+					return true;
 				}
 			}
 		}

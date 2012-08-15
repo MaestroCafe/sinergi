@@ -55,12 +55,17 @@ class AutoLoader {
 			'model'		=> Path::$models, 
 			'helper'	=> Path::$helpers, 
 			'process'	=> Path::$processes, 
-			'sinergi'	=> Path::$core . "traits/"
+			'sinergi'	=> Path::$core . "traits/",
+			'modules'	=> Path::$documentRoot . "modules/"
 		];
 		
 		foreach($matches as $namespace=>$path) {
 			if (preg_match("/^{$namespace}\\\/i", $className)) {
-				require_once $path . str_replace('\\', '/', strtolower(substr($className, strlen($namespace)))) . ".php";
+				if ($namespace === 'modules') {
+					require_once $path . preg_replace('!^([^/]+)/([^/]+)!', '$1/$2s', str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1)))) . ".php";
+				} else {
+					require_once $path . str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1))) . ".php";
+				}
 				return true;
 			}
 		}

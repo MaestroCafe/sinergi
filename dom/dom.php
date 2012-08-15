@@ -47,7 +47,14 @@ class DOM {
 	 * @var	DOMDocument
 	 */
 	public static $dom;
-		
+	
+	/**
+	 * The DOM's first childs
+	 * 
+	 * @var	array
+	 */
+	public static $childs;
+	
 	/**
 	 * Creates the DOM and configure it
 	 * 
@@ -69,7 +76,7 @@ class DOM {
 		$content = str_replace(['class-fixed-tmp', '="attribute-fixed-tmp"'], ['class', ''], $content);
 		$content = mb_convert_encoding($content, 'UTF-8', 'HTML-ENTITIES');
 		
-		return $content;
+		return self::minify($content);
 	}
 	
 	/**
@@ -133,5 +140,15 @@ class DOM {
 		if (!isset(self::$dom)) self::createDOM();
 		
 		return self::$dom->createComment( $text );
+	}
+	
+	/**
+	 * Compress HTML output
+	 *
+	 * @param	string
+	 * @return	string
+	 */
+	public static function minify($output) {
+		return $output;
 	}
 }

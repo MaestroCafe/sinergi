@@ -54,11 +54,16 @@ class View {
 	 * 
 	 * @param	string	the view path to load
 	 * @param	array	the arguments passed from the controller to the view
+	 * @param	array	the module the view is in
 	 * @return	void
 	 */	
-	public function __construct( $view, $args = null ) {
+	public function __construct( $view, $args = null, $module = null ) {
 		// Get View file name
-		$file = Path::$views . trim($view, ' /') . '.php';
+		if (!isset($module)) {
+			$file = Path::$views . trim($view, ' /') . '.php';
+		} else {
+			$file = Path::$modules . $module . '/views/' . trim($view, ' /') . '.php';
+		}
 				
 		// Define variables passed to the view.
 		if ($args != null) foreach ($args as $key=>$value) $$key = $value;

@@ -48,6 +48,7 @@ class Request {
 					$secure 		= false, 
 					$domainName 	= '', 
 					$queryString 	= '',
+					$fileName		= '',
 					$fileType		= '';
 			
 	/**
@@ -59,33 +60,36 @@ class Request {
 	public function __construct() {
 		// Determines if the connection with the client is secure.
 		if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']) {
-		    $this::$secure = true;
+		    self::$secure = true;
 		}
 		
 		// Define the URL, URI, URN and query string of the request.
 		if (Sinergi::$mode == 'request' || Sinergi::$mode == 'api') {
-			$this::$url = rtrim(
-				$this::$uri = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') . "{$_SERVER['SERVER_NAME']}{$_SERVER['REQUEST_URI']}", 
+			self::$url = rtrim(
+				self::$uri = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') . "{$_SERVER['SERVER_NAME']}{$_SERVER['REQUEST_URI']}", 
 				'?'	
 			);
 			
-			$this::$urn = rtrim($_SERVER['REQUEST_URI'], '?');
+			self::$urn = rtrim($_SERVER['REQUEST_URI'], '?');
 			
 			if (!empty($_SERVER['QUERY_STRING'])) {
-				$this::$url = substr($this::$url, 0, -(strlen("{$_SERVER['QUERY_STRING']}") + 1));
-				$this::$urn = substr($this::$urn, 0, -(strlen("{$_SERVER['QUERY_STRING']}") + 1));
+				self::$url = substr(self::$url, 0, -(strlen("{$_SERVER['QUERY_STRING']}") + 1));
+				self::$urn = substr(self::$urn, 0, -(strlen("{$_SERVER['QUERY_STRING']}") + 1));
 			}
 			
-			$this::$queryString = $_SERVER['QUERY_STRING'];
+			self::$queryString = $_SERVER['QUERY_STRING'];
 		}
 		
 		// Define the URL or the request.
 		if (isset($_SERVER['HTTP_HOST'])) {
-		    $this::$domainName = $_SERVER['HTTP_HOST'];
+		    self::$domainName = $_SERVER['HTTP_HOST'];
 		}
 		
 		// Get the file type
-		$this::$fileType = $this->getFileType();
+		self::$fileType = $this->getFileType();
+		
+		// Get the file name
+		self::$fileName = preg_replace('{.*/([^/]*)$}', '$1', self::$urn) ?: 'index.'.self::$fileType;
 	}
 	
 	/**
@@ -95,7 +99,7 @@ class Request {
 	 */
 	private function getFileType() {
 		/* Get file extension if URN is file */
-		preg_match("/.*\.+(.{2,4})$/i", $this::$urn, $matches);
+		preg_match("/.*\.+(.{2,4})$/i", self::$urn, $matches);
 		
 		if (isset($matches[1])) {
 			return strtolower($matches[1]);

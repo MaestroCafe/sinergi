@@ -43,11 +43,12 @@ abstract class Hooks {
 	 * @var	array
 	 */
 	private $hooks = [
-		'path',			// Hooks the path object
-#		'configs',		// Hooks the config loader
-		'routes',		// Hooks the routes
-		'loader',		// Hooks the page/file loader
-#		'processes'		// Hooks the processes execution
+		'configs',		// Hook after all inital configurations
+		'request',		// Hook before the request is loaded
+		'routes',		// Allow a hook to manipulate the routes
+		'controller',	// Allow a hook to manipulate the controllers matched with routes
+		'dom',			// Allow a hook to manipulate the DOM before output
+		'output'		// Allow a hook to manipulate the output
 	];
 	
 	/**
@@ -73,16 +74,23 @@ abstract class Hooks {
 	}
 	
 	/**
-	 * Run all hooks.
+	 * Run a hook
 	 * 
-	 * @return	void
+	 * @param	string
+	 * @param	mixed
+	 * @return	mixed
 	 */
-	public static function run($method) {
+	public static function run( $method, $argument = null ) {
 		foreach(Hooks::$registered_hooks as $plugin_name=>$registered_hooks) {
 			if (array_key_exists($method, $registered_hooks)) {
 				$obj = "\\modules\\{$plugin_name}\\Module_hooks";
-				$obj::$method();
+				if (isset($argument)) {
+					$argument = $obj::$method( $argument );
+				} else {
+					$obj::$method();
+				}
 			}
 		}
+		return $argument;
 	}
 }

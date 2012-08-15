@@ -32,6 +32,8 @@
  * @link		https://github.com/sinergi/sinergi
  */
 
+use sinergi\DOM;
+
 /**
  * Function to create a node.
  *
@@ -96,10 +98,19 @@ class DOMManipulation {
 			trigger_error("Supplied argument is not a valid string", E_USER_NOTICE);
 			return $this;
 		}
-						
+		
+		if (!isset($element)) {
+			$element = new stdClass();
+			$element->element = DOM::$dom;
+		}
+		
 		if ( !is_object($element) || (get_class($element) !== 'DOMDocument' && !isset($element->element))) {
 			trigger_error("Supplied argument is not a valid Element resource", E_USER_NOTICE);
 			return $this;
+		}
+		
+		if (get_class($element->element) === 'DOMDocument') {
+			DOM::$childs[] = $this;
 		}
 		
 		if (isset($where) and $where!='bottom') {

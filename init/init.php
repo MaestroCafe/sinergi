@@ -86,23 +86,22 @@ class Sinergi {
 		$this->loadClasses(); // Load all required classes
 		
 		$this->loadSettings();
-		Hooks::run('settings'); // Run all the request hooks
 		
 		$this->defaults();
-		Hooks::run('defaults'); // Run all the defaults hooks
 
 		$this->loadModules(); // Load modules after the path class because we need the path to load the modules
 		
-		Hooks::run('path'); // Run all the path hooks
-		
 		new Request; // Defines the default paths.
-		Hooks::run('request'); // Run all the defaults hooks
 		
 		new AutoLoader; // Register the autoloader.
+		
+		Hooks::run('configs'); // Run all the configs hooks
 		
 		// Load request file
 		switch($this::$mode) {
 			case 'request':
+				Hooks::run('request'); // Run all reqests hooks
+				
 				require Path::$core."loader/request.php";
 				new sinergi\RequestLoader;
 				break;
@@ -180,6 +179,8 @@ class Sinergi {
 		require Path::$core . "db/db.php";			// Get the DB classes
 
 		require Path::$core . "files/files.php";			// Get the DB classes
+		
+		require Path::$core . "functions/token.php";			// Get the token function
 	}
 	
 	/**
@@ -199,7 +200,7 @@ class Sinergi {
 			$dir = [rtrim(Path::$settings, '/')];
 			do {
 				if (is_file(current($dir)) && preg_match("/\.php$/i", current($dir))) {
-					require current($dir);
+					$settings = array_merge($settings, require current($dir));
 				} else if (is_dir(current($dir))) {
 					foreach (array_slice(scandir(current($dir)), 2) as $item) {
 						$dir[] = current($dir) . "/{$item}";
@@ -234,7 +235,8 @@ class Sinergi {
 	 */
 	public function __destruct() {
 		if ($this->complete && $this::$mode === 'request' && !empty(DOM::$dom)) {
-			echo DOM::write();
+			Hooks::run('dom');
+			echo Hooks::run('output', DOM::write()); // Run all output hooks
 		}
 	}
 	

@@ -88,6 +88,35 @@ class Manager extends ArrayObject {
 	];
 	
 	/**
+	 * Table's fields
+	 * 
+	 * @var	array
+	 */
+	private $fields;
+	
+	/**
+	 * List the table's fields
+	 * 
+	 * @return	array
+	 */
+	public function listFields() {
+		if (isset($this->fields)) {
+			return $this->fields;
+		} else {
+			$sth = $this->prepare("SHOW COLUMNS FROM {$this->slashes[$this->driver][0]}{$this->tableName}{$this->slashes[$this->driver][1]};");
+			$sth->execute();
+			$results = $sth->fetchAll(PDO::FETCH_ASSOC);
+			
+			$this->fields = [];
+			foreach($results as $field) {
+				$this->fields[$field['Field']] = $field;
+			}
+			
+			return $this->fields;
+		}
+	}
+	
+	/**
 	 * Update
 	 * 
 	 * @param $provider
@@ -583,15 +612,27 @@ class Manager extends ArrayObject {
 	}
 	
 	/**
-	 * Order
+	 * Order method for queries
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access public
-	 * @return const
+	 * @param	string|array	the field to order by or an array containing the fields and the orders
+	 * @param	string|bool		the order to order the fields by
+	 * @return	self
 	 */
-	public function order($field, $asc=true) {		
+	public function order( $field, $order = 'asc' ) {
 		$this->select(); // Prepare select query
+		
+		// Process multiple orders at the same time
+		if (is_array($field)) {
+			foreach($field as $key=>$value) {
+				if (is_string($key)) {
+					$this->order($key, $value);
+				} else {
+					$this->order($value);
+				}
+			}
+			
+			return $this;
+		}
 		
 		if ($this->orderBy==false) { // First order by
 			$this->query .= ($this->addParenthesis ? ")" : "")." ORDER BY ";
@@ -601,7 +642,7 @@ class Manager extends ArrayObject {
 			$this->query .= ", ";
 		}
 		
-		$this->query .= "{$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]} ".(!$asc ? "DESC " : "");
+		$this->query .= "{$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]} ".(!$order || strtolower($order) === 'desc' ? "DESC " : "");
 
 		return $this;
 	}
