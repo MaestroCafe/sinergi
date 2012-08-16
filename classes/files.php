@@ -278,7 +278,7 @@ class File {
 		$this->createDir(dirname($destination)); // Create directories if they don't exists
 		$destination = $this->cleanPath($destination); // Clean the destination path
 		
-		$this->path = $origin; // Remove the DOCUMENT_ROOT from the uploaded file path, because it is in the system's tmp folder
+		$this->path = $origin; // Remove the Path::$documentRoot from the uploaded file path, because it is in the system's tmp folder
 		
 		if(move_uploaded_file($this->path, $destination)) {
 			$this->path = $destination;
@@ -338,96 +338,7 @@ class File {
 		
 		return $this;
 	}
-	
-	/**
-	 * Upload file to an FTP Server
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
-	 */
-	public function upload($uploadFileName, $serverSettings) {
-		$path = dirname($uploadFileName);
-		if ($this->connectFtp(array_merge($serverSettings, ['path'=>$path]))) {
-			$this->openFile();
 			
-			ftp_pasv($this->ftpConnection, true);
-			
-			if (!ftp_fput($this->ftpConnection, basename($uploadFileName), $this->filePointer, FTP_BINARY)) {
-				$this->ftpConnection = null;
-				trigger_error('Failed uploading file to depo.');
-				return false;
-			}
-		}
-	}
-
-	/**
-	 * Connect to an FTP Server
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
-	 */
-	private function connectFtp($settings) {
-		// Clean settings, cause we tolerate messy settings : ['username'=>'user', 'server'=>'server', 'password']
-		$server = $username = $password = $path = null;
-		foreach($settings as $key=>$value) {
-			if($key=='server') {
-				$server = $value;
-				continue;
-			} else if ($key=='username') {
-				$username = $value;
-				continue;
-			} else if ($key=='password') {
-				$password = $value;
-				continue;
-			} else if ($key=='path') {
-				$path = $value;
-				continue;
-			} else if (!isset($server) && !isset($username) && !isset($password) && !isset($path)) {
-				$server = $value;
-			} else if (!isset($username) && !isset($password) && !isset($path)) {
-				$username = $value;
-			} else if (!isset($password) && !isset($path)) {
-				$password = $value;
-			} else if (!isset($path)) {
-				$path = $value;
-			}
-		}
-		
-		if (!isset($this->ftpConnection)) {
-			if (!$this->ftpConnection = ftp_connect(($server=="localhost" ? "127.0.0.1" : $server))) { //  Try to connect to server
-				$this->ftpConnection = null;
-				trigger_error('Server not found.');
-				return false;
-			}
-			
-			if (!@ftp_login($this->ftpConnection, $username, $password)) { // Log into server
-				$this->ftpConnection = null;
-				trigger_error('Login incorrect.');
-				return false;
-			}
-			
-			if (isset($path) && !@ftp_chdir($this->ftpConnection, $path)) { // If there is a path and path does not exists
-				$dirs = explode("/", str_replace('//', '/', $path));
-				foreach ($dirs as $dir) {
-				    if (!empty($dir) && !@ftp_chdir($this->ftpConnection, $dir)) {
-				    	if (!ftp_mkdir($this->ftpConnection, $dir) || !ftp_chdir($this->ftpConnection, $dir)) {
-							$this->ftpConnection = null;
-				    		trigger_error('Could not change directory');
-				    		return false;	
-				    	}
-				    }
-				}
-			}
-			return true;
-		} else {
-			return true;
-		}
-	}
-	
 	/**
 	 * Read the file
 	 * 
@@ -443,7 +354,7 @@ class File {
 	}
 	
 	/**
-	 * Clean the file path and prepend the DOCUMENT_ROOT if not already prepended
+	 * Clean the file path and prepend the Path::$documentRoot if not already prepended
 	 * 
 	 * @param $provider
 	 * @var bool
@@ -451,8 +362,8 @@ class File {
 	 * @return const
 	 */
 	private function cleanPath($path) {
-		if (substr($path, 0, strlen(DOCUMENT_ROOT))!=DOCUMENT_ROOT) {
-			$path = DOCUMENT_ROOT.$path;
+		if (substr($path, 0, strlen(Path::$documentRoot))!=Path::$documentRoot) {
+			$path = Path::$documentRoot.$path;
 		}
 		return str_replace('//', '/', $path);
 	}
@@ -466,7 +377,7 @@ class File {
 	 * @return const
 	 */
 	private function createDir($dir) {
-		if (substr($dir, 0, strlen(DOCUMENT_ROOT))!=DOCUMENT_ROOT) $dir = str_replace('//', '/', DOCUMENT_ROOT.$dir); // Create real path
+		if (substr($dir, 0, strlen(Path::$documentRoot))!=Path::$documentRoot) $dir = str_replace('//', '/', Path::$documentRoot.$dir); // Create real path
 		if(!is_dir($dir)) { // Create directory if directory does not exists
 			mkdir($dir, 0777, true);
 		}

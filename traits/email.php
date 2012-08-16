@@ -68,7 +68,7 @@ trait Email {
 		
 		// Replace tags by values
 		if (count($args)) {
-			$body = $this->_vsprintf($body, $args);
+			$body = $this->_replaceTags($body, $args);
 		}
 		
 		// Get title
@@ -91,37 +91,22 @@ trait Email {
 	}
 	
 	/**
-	 * Same as vsprintf but compatible with HTML, it search and replace %s
+	 * Replace tags by their values
 	 * 
 	 * @param	string
 	 * @param	array
 	 * @return	string
 	 */
-	private function _vsprintf($format, $args) {
-		$search = '%s';
-		foreach ($args as $replace) {
-			$format = $this->_str_replace_once($search, $replace, $format);
-		}
-		return $format;
-	}
+	private function _replaceTags( $content, $args ) {
+		preg_match_all('!{{[^}]*}}!', $content, $tags);
 		
-	/**
-	 * Search and replace only once
-	 * 
-	 * @param	string
-	 * @param	string
-	 * @param	string
-	 * @return	string
-	 */
-	private function _str_replace_once($search, $replace, $subject) {
-		$res = strpos($subject, $search);
-		if ($res === false) {
-			return $subject;
-		} else {
-			// There is data to be replaces
-			$left_seg = substr($subject, 0, strpos($subject, $search));
-			$right_seg = substr($subject, (strpos($subject, $search) + strlen($search)));
-			return $left_seg . $replace . $right_seg;
+		foreach(array_unique($tags[0]) as $tag) {
+			$tagName = trim($tag, ' {}');
+			if (isset($args[$tagName])) {
+				$content = str_replace($tag, $args[$tagName], $content);
+			}
 		}
+				
+		return $content;
 	}
 }

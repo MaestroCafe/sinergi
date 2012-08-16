@@ -41,12 +41,15 @@ class AutoLoader {
 	 * @var	
 	 */
 	public $sinergiClasses = [
-		'Controller'	=> 'classes/controller.php',
-		'Process'		=> 'classes/process.php',
-		'View'			=> 'classes/view.php',
-		'StaticFile'	=> 'classes/static_file.php',
-		'DB'			=> 'db/db.php',
-		'File'			=> 'files/files.php',
+		'Controller'		=> 'classes/controller.php',
+		'Process'			=> 'classes/process.php',
+		'View'				=> 'classes/view.php',
+		'StaticFile'		=> 'classes/static_file.php',
+		'File'				=> 'classes/files.php',
+		'Token'				=> 'classes/token.php',
+		'PersistentVars'	=> 'classes/persistent_vars.php',
+		'DB'				=> 'db/db.php',
+		'sinergi\DOM'		=> 'dom/dom.php',
 	];
 	
 	/**

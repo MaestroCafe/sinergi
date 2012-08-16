@@ -108,7 +108,7 @@ class Sinergi {
 		switch($this::$mode) {
 			case 'request':
 				Hooks::run('request'); // Run all reqests hooks
-				
+						
 				require Path::$core."loader/request.php";
 				new sinergi\RequestLoader;
 				break;
@@ -178,7 +178,6 @@ class Sinergi {
 		require Path::$core . "classes/request.php";			// Get the request class
 		require Path::$core . "classes/autoloader.php";		// Get the autoloader class
 		require Path::$core . "classes/hooks.php";				// Get the hook class
-		require Path::$core . "functions/token.php";			// Get the token function
 	}
 	
 	/**
