@@ -46,6 +46,7 @@ class Path {
 					$apis, 
 					$configs, 
 					$controllers, 
+					$emails, 
 					$errors, 
 					$helpers, 
 					$languages, 
@@ -74,6 +75,7 @@ class Path {
 		self::$configs = self::$application . "configs/";
 		self::$controllers = self::$application . "controllers/";
 		self::$errors = self::$application . "errors/";
+		self::$emails = self::$application . "emails/";
 		self::$helpers = self::$application . "helpers/";
 		self::$languages = self::$application . "languages/";
 		self::$libraries = self::$application . "libraries/";
