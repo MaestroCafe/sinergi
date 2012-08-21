@@ -34,7 +34,8 @@
 namespace sinergi;
 
 use Path,
-	DOMDocument;
+	DOMDocument,
+	Request;
 
 require_once Path::$core . 'dom/manipulation.php';
 require_once Path::$core . 'dom/selectors.php';
@@ -71,8 +72,14 @@ class DOM {
 	 * 
 	 * @return	string
 	 */
-	public static function write() {
-		$content = self::$dom->saveHTML();
+	public static function write( $fileType = null ) {
+		if (isset($fileType) && $fileType === 'xml' || !isset($fileType) && Request::$fileType === 'xml') {
+			$content = self::$dom->saveXML();
+		} else if (isset($fileType) && $fileType === 'html' || !isset($fileType) && Request::$fileType === 'html') {
+			$content = self::$dom->saveHTML();
+		} else {
+			trigger_error("File type does not support a DOM", E_USER_ERROR);
+		}
 		$content = str_replace(['class-fixed-tmp', '="attribute-fixed-tmp"'], ['class', ''], $content);
 		$content = mb_convert_encoding($content, 'UTF-8', 'HTML-ENTITIES');
 		

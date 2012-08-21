@@ -232,7 +232,20 @@ class Sinergi {
 	 * @return void
 	 */
 	public function __destruct() {
-		if ($this->complete && $this::$mode === 'request' && !empty(DOM::$dom)) {
+		// Change the filetype of the document if document is not HTML
+		if (Request::$fileType !== 'html') {
+			switch(Request::$fileType) {
+				case 'js':		header ("Content-Type: application/x-javascript"); break;
+				case 'css':		header ("Content-Type: text/css"); break;
+				case 'txt':		header ("Content-Type: text/plain"); break;
+				case 'xml':		header ("Content-Type: text/xml"); break;
+				case 'json':	header ("Content-Type: application/json"); break;
+				case 'rss':		header ("Content-Type: application/rss+xml"); break;
+				case 'atom':	header ("Content-Type: application/atom+xml"); break;
+			}
+		}
+
+		if ($this->complete && $this::$mode === 'request' && !empty(DOM::$dom)) {			
 			Hooks::run('dom');
 			echo Hooks::run('output', DOM::write()); // Run all output hooks
 		}

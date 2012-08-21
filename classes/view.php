@@ -79,8 +79,14 @@ class View {
 		$doctype = null;
 		if (!isset($html)) {
 			$views = explode(PHP_EOL, $content, 2);
-			if (stristr($views[0], 'doctype')) $doctype = $views[0];
-			else $views[1] = $content;
+			if (
+				preg_match('/doctype/', $views[0])
+			) {
+				//die($views[0]);
+				$doctype = $views[0];
+			} else {
+				$views[1] = $content;
+			}
 			
 			$content = $views[1];
 		}
