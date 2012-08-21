@@ -82,7 +82,6 @@ class View {
 			if (
 				preg_match('/doctype/', $views[0])
 			) {
-				//die($views[0]);
 				$doctype = $views[0];
 			} else {
 				$views[1] = $content;
@@ -113,36 +112,48 @@ class View {
 		
 		// Load view content into a DOMDocument object
 		$tree = new DOMDocument();		
-		@$tree->loadHTML($view);
+		if (Request::$fileType === 'xml') {
+			@$tree->loadXML($view);
+		} else {
+			@$tree->loadHTML($view);
+		}
 		
 		// Append doctype to DOM
 		if (!empty($doctype)) {
 			$node = $tree->createCDATASection($doctype);
 			$tree->firstChild->parentNode->insertBefore($node, $tree->firstChild);
 		}
-		
-		// Check if view has HTML tags
-		if (preg_match('{<html.+</html>}msU', $view)) {		
-			foreach ($tree->childNodes as $child) {
-				// Avoid empty html nodes
-				if ($child->nodeName !== 'html' || $child->hasChildNodes()) { 
-					
-					// Add to elements					
-					if ($child->nodeName==='html') $elements[] = $this->createElement($child); 
-					else $elements[] = $this->createElement($child);
-				}
+				
+		// Load XML
+		if (Request::$fileType === 'xml') {
+			foreach($tree->childNodes as $child) {
+				$elements[] = $this->createElement($child);
 			}
+		// Load HTML
 		} else {
-			// Create Elements object from each nodes from the tree
-			foreach ($tree->childNodes as $child) {
-				if ($child->nodeName === 'html' && $child->hasChildNodes()) {
-			    	foreach ($child->childNodes as $child2) {
-						if ( $child2->nodeName === 'body' && $child2->hasChildNodes() ) {
-			    			foreach ($child2->childNodes as $child3) {
-								$elements[] = $this->createElement($child3);
-			    			}
-						}
-			    	}
+			// Check if view has HTML tags
+			if (preg_match('{<html.+</html>}msU', $view)) {		
+				foreach ($tree->childNodes as $child) {
+					// Avoid empty html nodes
+					if ($child->nodeName !== 'html' || $child->hasChildNodes()) { 
+						
+						// Add to elements					
+						if ($child->nodeName==='html') $elements[] = $this->createElement($child); 
+						else $elements[] = $this->createElement($child);
+					}
+				}
+			} else {
+				// Create Elements object from each nodes from the tree
+				foreach ($tree->childNodes as $child) {
+					if ($child->nodeName === 'html' && $child->hasChildNodes()) {
+				    	foreach ($child->childNodes as $child2) {
+							if ( $child2->nodeName === 'body' && $child2->hasChildNodes() ) {
+				    			foreach ($child2->childNodes as $child3) {
+									$elements[] = $this->createElement($child3);
+				    			}
+							}
+				    	}
+					}
 				}
 			}
 		}
