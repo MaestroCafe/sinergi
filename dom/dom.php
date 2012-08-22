@@ -75,6 +75,7 @@ class DOM {
 	public static function write( $fileType = null ) {
 		if (isset($fileType) && $fileType === 'xml' || !isset($fileType) && Request::$fileType === 'xml') {
 			$content = self::$dom->saveXML();
+			$content = str_replace('<![CDATA[ ]]>', '', $content); // We need to recheck where these come from
 		} else if (isset($fileType) && $fileType === 'html' || !isset($fileType) && Request::$fileType === 'html') {
 			$content = self::$dom->saveHTML();
 		} else {
