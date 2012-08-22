@@ -247,7 +247,13 @@ class Sinergi {
 
 		if ($this->complete && $this::$mode === 'request' && !empty(DOM::$dom)) {			
 			Hooks::run('dom');
-			echo Hooks::run('output', DOM::write()); // Run all output hooks
+			
+			if (Request::$fileType === 'xml') {
+				// Decode UTF-8 characters if file is XML
+				echo utf8_decode(Hooks::run('output', DOM::write())); // Run all output hooks
+			} else {
+				echo Hooks::run('output', DOM::write()); // Run all output hooks
+			}
 		}
 	}
 	

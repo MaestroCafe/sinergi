@@ -107,14 +107,17 @@ class View {
 	 * @return	void
 	 */ 
 	private function createTree( $view, $doctype = null ) {		
-		$view = mb_convert_encoding(trim($view), 'HTML-ENTITIES', 'UTF-8');
 		$elements = [];
 		
 		// Load view content into a DOMDocument object
 		$tree = new DOMDocument();		
+		
 		if (Request::$fileType === 'xml') {
+			$tree->preserveWhiteSpace = false;
+			$view = trim($view);
 			@$tree->loadXML($view);
 		} else {
+			$view = mb_convert_encoding(trim($view), 'HTML-ENTITIES', 'UTF-8');
 			@$tree->loadHTML($view);
 		}
 		
