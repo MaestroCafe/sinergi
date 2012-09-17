@@ -74,32 +74,33 @@ class AutoLoader {
 		
 		// Other classes
 		} else {
-			$matches = [
-				'model'		=> Path::$models, 
-				'helper'	=> Path::$helpers, 
-				'process'	=> Path::$processes, 
-				'sinergi'	=> Path::$core . "traits/",
-				'modules'	=> Path::$documentRoot . "modules/"
-			];
 			
-			foreach($matches as $namespace=>$path) {
-				if (preg_match("/^{$namespace}\\\/i", $className)) {
-					// Modules classes
-					if ($namespace === 'modules') {
-						// Load classes in direcotries
-						if (preg_match('!^([^\\\]*)\\\([^\\\]*)\\\([^\\\]*)\\\([^\\\]*)!', $className)) {
-							require_once $path . preg_replace('!^([^/]+)/([^/]+)/([^/]+)!', '$1/$2/$3', str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1)))) . ".php";
-						// Load default classes
-						} else {
-							require_once $path . preg_replace('!^([^/]+)/([^/]+)!', '$1/classes/$2', str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1)))) . ".php";
-						}
-					
-					// Application classes
-					} else {
-						require_once $path . str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1))) . ".php";
-					}
-					return true;
+			// Modules classes
+			if (preg_match("/^modules\\\/i", $className)) {
+				// Load classes in directories
+				if (preg_match('!^([^\\\]*)\\\([^\\\]*)\\\([^\\\]*)\\\([^\\\]*)!', $className)) {
+					require_once 
+						Path::$documentRoot . "modules/" . 
+						preg_replace('!^([^/]+)/([^/]+)/([^/]+)!', '$1/$2/$3', str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1)))) . ".php";
+				// Load default classes
+				} else {
+					require_once 
+						Path::$documentRoot . "modules/" . 
+						preg_replace('!^([^/]+)/([^/]+)!', '$1/classes/$2', str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1)))) . ".php";
 				}
+				return true;
+			}
+			
+			// Sinergi traits
+			else if (preg_match("/^sinergi\\\/i", $className)) {
+				require_once Path::$core . "traits/" . str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1))) . ".php";
+				return true;
+			}
+			
+			// Application classes
+			else {
+				$namespace = preg_replace('!^([^\\\]*)\\\.*!', '$1', $className);
+				require_once Path::$application . "{$namespace}/" . str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1))) . ".php";
 			}
 		}
 	}
