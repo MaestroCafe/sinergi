@@ -62,7 +62,7 @@ class AutoLoader {
 	}
 	
 	/**
-	 * Autoload the models, helpers, processes and sinergi traits.
+	 * Autoload classes
 	 * 
 	 * @param	string	name of the class
 	 * @return	void
@@ -74,26 +74,25 @@ class AutoLoader {
 		
 		// Other classes
 		} else {
-			
 			// Modules classes
 			if (preg_match("/^modules\\\/i", $className)) {
 				// Load classes in directories
 				if (preg_match('!^([^\\\]*)\\\([^\\\]*)\\\([^\\\]*)\\\([^\\\]*)!', $className)) {
 					require_once 
 						Path::$documentRoot . "modules/" . 
-						preg_replace('!^([^/]+)/([^/]+)/([^/]+)!', '$1/$2/$3', str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1)))) . ".php";
+						preg_replace('!^([^/]+)/([^/]+)/([^/]+)!', '$1/$2/$3', str_replace('\\', '/', strtolower(substr($className, 8)))) . ".php";
 				// Load default classes
 				} else {
 					require_once 
 						Path::$documentRoot . "modules/" . 
-						preg_replace('!^([^/]+)/([^/]+)!', '$1/classes/$2', str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1)))) . ".php";
+						preg_replace('!^([^/]+)/([^/]+)!', '$1/classes/$2', str_replace('\\', '/', strtolower(substr($className, 8)))) . ".php";
 				}
 				return true;
 			}
 			
 			// Sinergi traits
 			else if (preg_match("/^sinergi\\\/i", $className)) {
-				require_once Path::$core . "traits/" . str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1))) . ".php";
+				require_once Path::$core . "traits/" . str_replace('\\', '/', strtolower(substr($className, 8))) . ".php";
 				return true;
 			}
 			
@@ -101,6 +100,7 @@ class AutoLoader {
 			else {
 				$namespace = preg_replace('!^([^\\\]*)\\\.*!', '$1', $className);
 				require_once Path::$application . "{$namespace}/" . str_replace('\\', '/', strtolower(substr($className, strlen($namespace)+1))) . ".php";
+				return true;
 			}
 		}
 	}

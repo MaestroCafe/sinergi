@@ -81,8 +81,14 @@ class DOM {
 		} else {
 			trigger_error("File type does not support a DOM", E_USER_ERROR);
 		}
-		$content = str_replace(['class-fixed-tmp', '="attribute-fixed-tmp"'], ['class', ''], $content);
+		
 		$content = mb_convert_encoding($content, 'UTF-8', 'HTML-ENTITIES');
+
+		$content = str_replace(
+			['class-fixed-tmp', '="attribute-fixed-tmp"', '[SANITIZEDDOUBLEQUOTES]', '[SANITIZEDSINGLEQUOTES]'], 
+			['class', '', '&#34;', '&#39;'], 
+			$content
+		);
 		
 		return self::minify($content);
 	}

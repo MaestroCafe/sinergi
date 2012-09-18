@@ -117,6 +117,7 @@ class View {
 			$view = trim($view);
 			@$tree->loadXML($view);
 		} else {
+			$view = str_replace(['&#34;', '&#39;'], ['[SANITIZEDDOUBLEQUOTES]', '[SANITIZEDSINGLEQUOTES]'], $view);
 			$view = mb_convert_encoding(trim($view), 'HTML-ENTITIES', 'UTF-8');
 			@$tree->loadHTML($view);
 		}
