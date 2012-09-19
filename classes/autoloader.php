@@ -48,7 +48,7 @@ class AutoLoader {
 		'File'				=> 'classes/files.php',
 		'Token'				=> 'classes/token.php',
 		'PersistentVars'	=> 'classes/persistent_vars.php',
-		'DB'				=> 'db/db.php',
+		'Query'				=> 'db/query.php',
 		'sinergi\DOM'		=> 'dom/dom.php',
 	];
 	

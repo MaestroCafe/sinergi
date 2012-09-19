@@ -32,13 +32,13 @@
 require Path::$core . "db/manager.php";
 require Path::$core . "db/result.php";
 
-class DB extends sinergi\db\Manager {
+class Query extends sinergi\db\Manager {
 	/**
 	 * Connections are static for re-use
 	 *
 	 * @var	array
 	 */
-	static public $connections = [];
+	public static $connections = [];
 	
 	/**
 	 * The connection to the database
@@ -71,8 +71,8 @@ class DB extends sinergi\db\Manager {
 	/**
 	 * Database manager constructor.
 	 * 
-	 * @param	string	the name of the database
-	 * @param	string	the name of the table
+	 * @param	string
+	 * @param	string
 	 * @return	void
 	 */
 	public function __construct( $databaseName, $tableName = null ) {
@@ -88,8 +88,7 @@ class DB extends sinergi\db\Manager {
 	/**
 	 * Set the database.
 	 *
-	 * @access private
-	 * @return void
+	 * @return	void
 	 */
 	private function setDatabase( $databaseName = null ) {
 		global $settings;
@@ -110,8 +109,7 @@ class DB extends sinergi\db\Manager {
 	/**
 	 * PDO Connect.
 	 *
-	 * @access private
-	 * @return void
+	 * @return	void
 	 */
 	private function connectDatabase() {
 		global $settings;
@@ -131,7 +129,7 @@ class DB extends sinergi\db\Manager {
 						"host={$databaseAddress[0]};".
 						(!empty($databaseAddress[1]) ? "port={$databaseAddress[1]};":"");
 					break;
-				case 'access':
+				case 'sqlserver':
 					$dsn = 
 						"dblib:dbname={$settings['databases'][$this->databaseName]['dbname']};".
 						"host={$databaseAddress[0]};".
@@ -177,7 +175,7 @@ class DB extends sinergi\db\Manager {
 	/**
 	 * PDO methods shortcuts.
 	 *
-	 * @return void
+	 * @return	void
 	 */
 	public function __call($method, $args) {
 		switch($method) {
@@ -218,7 +216,7 @@ class DB extends sinergi\db\Manager {
 	/**
 	 * Close connection with database when object is destroyed.
 	 * 
-	 * @return void
+	 * @return	void
 	 */
 	public function __destruct() {
 		$this->connection = null;

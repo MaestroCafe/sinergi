@@ -36,66 +36,66 @@ use PDO,
 
 class Manager extends ArrayObject {
 	/**
-	 * Query and parameters
+	 * Query and parameters.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
+	 * @var	string
+	 * @var	array
+	 * @var	int
 	 */
 	private $query, $binds = [], $bindCount = 0;
 	
 	/**
-	 * Boolean that defines the get or getAll methods have been called, if so we use this boolean
+	 * Boolean that defines the get or getAll methods have been called, if so we use this boolean.
 	 * 
-	 * @param $gotResults
-	 * @var bool
-	 * @access private
+	 * @var	bool
 	 */
 	private $gotResults = false;
 	
 	/**
-	 * Boolean that defines if the results come from the get or a getAll method and the object for that unique result
+	 * Boolean that defines if the results come from the get or a getAll method and the object for that unique result.
 	 * 
-	 * @param $isUnique, $uniqueObject
-	 * @var bool, Result object
-	 * @access private, private
+	 * @var	bool
+	 * @var	object(Result)
 	 */
 	private $isUnique = false, $uniqueObject;
 	
 	/**
-	 * Boolean used to track if order by has already been started, in which case we use a comma to separate them
+	 * Boolean used to track if order by has already been started, in which case we use a comma to separate them.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @var	bool
 	 */
 	private $orderBy = false;
 	
 	/**
-	 * Logic operators
+	 * Logic operators.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
+	 * @var	bool
+	 * @var	bool
+	 * @var	bool
+	 * @var	bool
 	 */
 	private $orOperator = false, $notOperator = false, $andOperator = false;
 	private $addParenthesis = true;
 	
+	/**
+	 * Drivers equivalent of slashes.
+	 * 
+	 * @var	array
+	 */
 	private $slashes = [
-		'mysql' => ['`', '`'],
-		'access' => ['[', ']']
+		'mysql'		=> ['`', '`'],
+		'sqlserver' => ['[', ']']
 	];
 	
 	/**
-	 * Table's fields
+	 * Table's fields.
 	 * 
 	 * @var	array
 	 */
 	private $fields;
 	
 	/**
-	 * List the table's fields
+	 * List the table's fields.
 	 * 
 	 * @return	array
 	 */
@@ -117,189 +117,31 @@ class Manager extends ArrayObject {
 	}
 	
 	/**
-	 * Update
+	 * Get a single entry from database.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @param	mixed
+	 * @return	self
 	 */
-	public function update($field, $value=null) {
-		
-		if($this->gotResults && $this->isUnique) { // Update a unique result
-			$this->uniqueObject->update($field, $value);
-			$this->refreshUniqueObject();
-		
-		} else if ($this->gotResults) { // Update multiple results
-			foreach($this as $obj) {
-				$obj->update($field, $value);
-			}
-
-		} else { // Update with a query
-			if (!is_array($field)) { $field = [$field=>$value]; } // Options
-			
-			$this->select(); // Prepare select query
-					
-			$this->cleanQuery();
-			
-			$queryFields = " SET ";
-			
-			foreach ($field as $key=>$value) {
-				$this->bindCount++;
-				$queryFields .= "{$this->slashes[$this->driver][0]}{$key}{$this->slashes[$this->driver][1]}=:value{$this->bindCount}, ";
-				$this->binds["value{$this->bindCount}"] = $value;
-			}
-			$queryFields = substr($queryFields, 0, -2);
-			
-			// Replace SELECT * FROM by UPDATE and query fields
-			$this->query = preg_replace(
-				"/SELECT \* FROM {$this->slashes[$this->driver][0]}([^{$this->slashes[$this->driver][1]}.]*){$this->slashes[$this->driver][1]}/", 
-				"UPDATE {$this->slashes[$this->driver][0]}$1{$this->slashes[$this->driver][1]}".$queryFields, 
-				$this->query
-			);
-			
-			$sth = $this->prepare($this->query);
-			$sth->execute($this->binds);
-			
-			$this->resetQuery();
-		}
-				
-		return $this;		
-	}
-
-	/**
-	 * Decrease
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
-	 */
-	public function decrease($field, $value=1) {
-		return $this->increase($field, -$value);
-	}	
-	
-	/**
-	 * Increase
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
-	 */
-	public function increase($field, $value=1) {
-		
-		if($this->gotResults && $this->isUnique) { // Update a unique result
-			$this->uniqueObject->increase($field, $value);
-			$this->refreshUniqueObject();
-		
-		} else if ($this->gotResults) { // Update multiple results
-			foreach($this as $obj) {
-				$obj->increase($field, $value);
-			}
-
-		} else { // Increase with a query
-			if (!is_array($field)) { $field = [$field=>$value]; } // Options
-			
-			$this->select(); // Prepare select query
-					
-			$this->cleanQuery();
-			
-			$queryFields = " SET ";
-			
-			foreach ($field as $key=>$value) {
-				$this->bindCount++;
-				$queryFields .= "{$this->slashes[$this->driver][0]}{$key}{$this->slashes[$this->driver][1]}={$this->slashes[$this->driver][0]}{$key}{$this->slashes[$this->driver][1]}+:value{$this->bindCount}, ";
-				$this->binds["value{$this->bindCount}"] = $value;
-			}
-			$queryFields = substr($queryFields, 0, -2);
-			
-			// Replace SELECT * FROM by UPDATE and query fields
-			$this->query = preg_replace(
-				"/SELECT \* FROM {$this->slashes[$this->driver][0]}([^{$this->slashes[$this->driver][1]}.]*){$this->slashes[$this->driver][1]}/", 
-				"UPDATE {$this->slashes[$this->driver][0]}$1{$this->slashes[$this->driver][1]}".$queryFields, 
-				$this->query
-			);
-			
-			$sth = $this->prepare($this->query);
-			$sth->execute($this->binds);
-			
-			$this->resetQuery();
-		}
-				
-		return $this;
-	}
-	
-	/**
-	 * 
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
-	 */
-	protected function refreshUniqueObject() {
-		foreach ($this->uniqueObject as $field=>$value) {
-			$this->$field = $this[$field] = $value;
-		}
-	}
-	
-	/**
-	 * Delete
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
-	 */
-	public function delete() {
-		
-		if($this->gotResults && $this->isUnique) { // Delete a unique result
-			$this->uniqueObject->delete();
-		
-		} else if ($this->gotResults) { // Delete multiple results
-			foreach($this as $obj) {
-				$obj->delete();
-			}
-
-		} else { // Update with a query
-			$this->select(); // Prepare select query
-			
-			$this->query = str_replace('SELECT * FROM', 'DELETE FROM', $this->query);
-			
-			$this->cleanQuery();
-			
-			$sth = $this->prepare($this->query);
-			$sth->execute($this->binds);
-			
-			$this->resetQuery();
-		}
-		
-		return $this;		
-	}
-	
-	/**
-	 * Get results
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
-	 */
-	public function getAllDie($fields=null, $getOne=null) { $this->die = true; return $this->getAll($fields, $getOne); }### TO REMOVE OF COURSE AND CHANGE FOR APPROPRIATE DEBUG OPTION
-	public function getDie($fields=null) { $this->die = true; return $this->get($fields); }### TO REMOVE OF COURSE AND CHANGE FOR APPROPRIATE DEBUG OPTION 
-	
-	public function get($fields=null) {
+	public function getDie( $fields = null ) { $this->die = true; return $this->get($fields); }### TO REMOVE OF COURSE AND CHANGE FOR APPROPRIATE DEBUG OPTION 
+	public function get( $fields = null ) {
 		$this->isUnique = true;
 		return $this->getAll($fields, true);
 	}
 	
-	public function getAll($fields=null, $getOne=null) {
+	/**
+	 * Get entries from database.
+	 * 
+	 * @param	mixed
+	 * @param	bool
+	 * @return	void
+	 */
+	public function getAllDie( $fields = null, $getOne = null ) { $this->die = true; return $this->getAll($fields, $getOne); }### TO REMOVE OF COURSE AND CHANGE FOR APPROPRIATE DEBUG OPTION	
+	public function getAll( $fields = null, $getOne = null ) {
 		if (isset($fields) && !is_array($fields)) $fields = [$fields]; // Options
 		
 		$this->gotResults = true;
 		
-		$this->select(); // Prepare select query
+		$this->prepareQuery(); // Prepare select query
 		
 		if (isset($getOne) && $getOne===true) {
 			$this->limit(1);
@@ -315,9 +157,8 @@ class Manager extends ArrayObject {
 			$this->query = str_replace(" * FROM", " {$queryFields} FROM", $this->query); // Put query fields in query
 		}
 		
-/* 		echo $this->query; die(); */
 		if (isset($this->die) && $this->die==true) {
-			print_r($this->binds);
+			var_dump($this->binds);
 			echo $this->query; die();
 		}
 
@@ -359,30 +200,197 @@ class Manager extends ArrayObject {
 	}
 	
 	/**
-	 * Clean the query
+	 * Count entries from database.
 	 * 
-	 * @access private
-	 * @return void
+	 * @return	void
 	 */
-	private function cleanQuery() {
-		$this->query = str_replace(
-			['  ', '( (', '  ', 'WHERE ( AND', '( AND', '( ', ' )', ' WHERE ()', ' ;'], 
-			[' ', '((', ' ', 'WHERE (', '(', '(', ')', '', ';'], 
-			$this->query.($this->addParenthesis ? ")":"").";");
+	public function countDie() { $this->die = true; return $this->count(); }
+	public function count() {		
+		// Count results if results exists.
+		if ($this->gotResults) {
+			return parent::count();
+		} else {
 		
-		if (substr($this->query, -10, -1)==' WHERE ()') $this->query = substr($this->query, 0, -10).";"; // Remove WHERE at the end of the query when now arguments are provided
+			$this->prepareQuery(); // Prepare select query
+			
+			if (isset($getOne) && $getOne===true) {
+				$this->limit(1);
+			}
+					
+			$this->cleanQuery();
+			
+			$this->query = str_replace(" * FROM", " COUNT(*) AS `count` FROM", $this->query); // Put query fields in query
+			
+			if (isset($this->die) && $this->die==true) {
+				var_dump($this->binds);
+				echo $this->query; die();
+			}
+	
+			$sth = $this->prepare($this->query);
+			$sth->execute($this->binds);
+			$result = $sth->fetch(PDO::FETCH_ASSOC);
+			
+			return $result['count'];
+		}
 	}
 	
 	/**
-	 * Create
+	 * Update entries fields from database.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @param	mixed
+	 * @param	string
+	 * @return	self
 	 */
-	public function createDie($field, $value=null) { $this->die = true; return $this->create($field, $value); }### TO REMOVE OF COURSE 
-	public function create($field, $value=null) {
+	public function update( $field, $value = null ) {
+		// Update a unique result
+		if($this->gotResults && $this->isUnique) {
+			$this->uniqueObject->update($field, $value);
+			$this->refreshUniqueObject();
+		
+		// Update multiple results
+		} else if ($this->gotResults) {
+			foreach($this as $obj) {
+				$obj->update($field, $value);
+			}
+		
+		// Update with a query
+		} else {
+			if (!is_array($field)) { $field = [$field=>$value]; } // Options
+			
+			$this->prepareQuery(); // Prepare select query
+					
+			$this->cleanQuery();
+			
+			$queryFields = " SET ";
+			
+			foreach ($field as $key=>$value) {
+				$this->bindCount++;
+				$queryFields .= "{$this->slashes[$this->driver][0]}{$key}{$this->slashes[$this->driver][1]}=:value{$this->bindCount}, ";
+				$this->binds["value{$this->bindCount}"] = $value;
+			}
+			$queryFields = substr($queryFields, 0, -2);
+			
+			// Replace SELECT * FROM by UPDATE and query fields
+			$this->query = preg_replace(
+				"/SELECT \* FROM {$this->slashes[$this->driver][0]}([^{$this->slashes[$this->driver][1]}.]*){$this->slashes[$this->driver][1]}/", 
+				"UPDATE {$this->slashes[$this->driver][0]}$1{$this->slashes[$this->driver][1]}".$queryFields, 
+				$this->query
+			);
+			
+			$sth = $this->prepare($this->query);
+			$sth->execute($this->binds);
+			
+			$this->resetQuery();
+		}
+				
+		return $this;		
+	}
+
+	/**
+	 * Increase entries fields from database.
+	 * 
+	 * @param	string
+	 * @param	int
+	 * @return	self
+	 */
+	public function increase( $field, $value = 1 ) {
+		// Increase a unique result
+		if($this->gotResults && $this->isUnique) {
+			$this->uniqueObject->increase($field, $value);
+			$this->refreshUniqueObject();
+		
+		// Increase multiple results
+		} else if ($this->gotResults) {
+			foreach($this as $obj) {
+				$obj->increase($field, $value);
+			}
+		
+		// Increase with a query
+		} else {
+			if (!is_array($field)) { $field = [$field=>$value]; } // Options
+			
+			$this->prepareQuery(); // Prepare select query
+					
+			$this->cleanQuery();
+			
+			$queryFields = " SET ";
+			
+			foreach ($field as $key=>$value) {
+				$this->bindCount++;
+				$queryFields .= "{$this->slashes[$this->driver][0]}{$key}{$this->slashes[$this->driver][1]}={$this->slashes[$this->driver][0]}{$key}{$this->slashes[$this->driver][1]}+:value{$this->bindCount}, ";
+				$this->binds["value{$this->bindCount}"] = $value;
+			}
+			$queryFields = substr($queryFields, 0, -2);
+			
+			// Replace SELECT * FROM by UPDATE and query fields
+			$this->query = preg_replace(
+				"/SELECT \* FROM {$this->slashes[$this->driver][0]}([^{$this->slashes[$this->driver][1]}.]*){$this->slashes[$this->driver][1]}/", 
+				"UPDATE {$this->slashes[$this->driver][0]}$1{$this->slashes[$this->driver][1]}".$queryFields, 
+				$this->query
+			);
+			
+			$sth = $this->prepare($this->query);
+			$sth->execute($this->binds);
+			
+			$this->resetQuery();
+		}
+				
+		return $this;
+	}
+	
+	/**
+	 * Decrease entries fields from database.
+	 * 
+	 * @param	string
+	 * @param	int
+	 * @return	self
+	 */
+	public function decrease( $field, $value = 1 ) {
+		return $this->increase( $field, -$value );
+	}	
+	
+	/**
+	 * Delete entries from database.
+	 * 
+	 * @return	self
+	 */
+	public function delete() {
+		// Delete a unique result
+		if($this->gotResults && $this->isUnique) {
+			$this->uniqueObject->delete();
+		
+		// Delete multiple results
+		} else if ($this->gotResults) {
+			foreach($this as $obj) {
+				$obj->delete();
+			}
+		
+		// Update with a query
+		} else {
+			$this->prepareQuery(); // Prepare select query
+			
+			$this->query = str_replace('SELECT * FROM', 'DELETE FROM', $this->query);
+			
+			$this->cleanQuery();
+			
+			$sth = $this->prepare($this->query);
+			$sth->execute($this->binds);
+			
+			$this->resetQuery();
+		}
+		
+		return $this;		
+	}
+		
+	/**
+	 * Create an entry in the database.
+	 * 
+	 * @param	mixed
+	 * @param	bool
+	 * @return	self
+	 */
+	public function createDie( $field, $value = null ) { $this->die = true; return $this->create($field, $value); }### TO REMOVE OF COURSE 
+	public function create( $field, $value = null ) {
 		if (!is_array($field)) { $field = [$field=>$value]; } // Options
 		
 		$query = "INSERT INTO {$this->slashes[$this->driver][0]}{$this->tableName}{$this->slashes[$this->driver][1]} (";
@@ -400,7 +408,7 @@ class Manager extends ArrayObject {
 		$query = substr($query, 0, -2).") VALUES (".substr($queryValues, 0, -2).");";
 			
 		if (isset($this->die) && $this->die==true) {
-			print_r($binds);
+			var_dump($binds);
 			echo $query; die();
 		}
 		
@@ -413,15 +421,14 @@ class Manager extends ArrayObject {
 	}
 	
 	/**
-	 * Replace
+	 * Replace an entry in the database.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @param	mixed
+	 * @param	bool
+	 * @return	self
 	 */
-	public function replaceDie($field, $value=null) { $this->die = true; return $this->replace($field, $value); }### TO REMOVE OF COURSE 
-	public function replace($field, $value=null) {
+	public function replaceDie( $field, $value = null ) { $this->die = true; return $this->replace($field, $value); }### TO REMOVE OF COURSE 
+	public function replace( $field, $value = null ) {
 		if (!is_array($field)) { $field = [$field=>$value]; } // Options
 		
 		$query = "REPLACE INTO {$this->slashes[$this->driver][0]}{$this->tableName}{$this->slashes[$this->driver][1]} (";
@@ -439,7 +446,7 @@ class Manager extends ArrayObject {
 		$query = substr($query, 0, -2).") VALUES (".substr($queryValues, 0, -2).");";
 			
 		if (isset($this->die) && $this->die==true) {
-			print_r($binds);
+			var_dump($binds);
 			echo $query; die();
 		}
 		
@@ -452,25 +459,21 @@ class Manager extends ArrayObject {
 	}
 	
 	/**
-	 * Get last insert id
+	 * Get last insert id.
 	 * 
-	 * @access public
-	 * @return int
+	 * @return	mixed
 	 */
 	public function getId() {
 		return $this->lastInsertId();
 	}
 	
 	/**
-	 * Check if exists
+	 * Check if an entry exists in the database.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @return	self
 	 */
 	public function exists() {
-#		$this->select(); // Prepare select query
+#		$this->prepareQuery(); // Prepare select query
 #		
 #		$this->query = str_replace(['  ', 'WHERE ( AND'], [' ', 'WHERE'], $this->query.";");
 #		
@@ -481,20 +484,19 @@ class Manager extends ArrayObject {
 #						
 #		$this->resetQuery();
 #		
-#		return count($results) ? $this : false;		
+#		return count($results) ? $this : false;
 	}
 	
 	/**
-	 * Find
+	 * Find fields in a table.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @param	mixed
+	 * @param	string
+	 * @return	self
 	 */
-	public function find($field, $value=true) {
+	public function find( $field, $value = true ) {
 		if (!is_array($field)) { $field = [$field=>$value]; } // Options
-		$this->select(); // Prepare select query
+		$this->prepareQuery(); // Prepare select query
 		
 		foreach ($field as $key=>$value) {
 			if ($value===null) {
@@ -509,19 +511,20 @@ class Manager extends ArrayObject {
 	}
 	
 	/**
-	 * Above
+	 * Find fields above a value in a table.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @param	mixed
+	 * @param	string
+	 * @return	self
 	 */
-	public function above($field, $value=null) {
+	public function above( $field, $value = null, $above = true ) {
 		if (!is_array($field)) { $field = [$field=>$value]; } // Options
-		$this->select(); // Prepare select query
+		
+		$this->prepareQuery(); // Prepare select query
 		
 		foreach ($field as $key=>$value) {
-			$this->where($key, ($this->notOperator ? '<=' : '>'), $value);
+			if ($above) $this->where($key, ($this->notOperator ? '<=' : '>'), $value);
+			else $this->where($key, ($this->notOperator ? '>=' : '<'), $value);
 		}
 		$this->notOperator = false;
 		
@@ -529,38 +532,27 @@ class Manager extends ArrayObject {
 	}
 	
 	/**
-	 * Below
+	 * Find fields below a value in a table.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @param	mixed
+	 * @param	string
+	 * @return	self
 	 */
-	public function below($field, $value=null) {
-		if (!is_array($field)) { $field = [$field=>$value]; } // Options
-		
-		$this->select(); // Prepare select query
-				
-		foreach ($field as $key=>$value) {
-			$this->where($key, ($this->notOperator ? '>=' : '<'), $value);
-		}
-		$this->notOperator = false;
-		
-		return $this;
+	public function below( $field, $value = null ) {
+		return $this->above($field, $value, false);
 	}
 	
 	/**
-	 * Contains allow you to search for a value in a field
+	 * Find fields containing value in a table.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @param	mixed
+	 * @param	string
+	 * @return	self
 	 */
-	public function contains($field, $value=null) {
+	public function contains( $field, $value = null ) {
 		if (!is_array($field)) { $field = [$field=>$value]; } // Options
 		
-		$this->select(); // Prepare select query
+		$this->prepareQuery(); // Prepare select query
 		
 		foreach ($field as $key=>$value) {
 			$this->where($key, ($this->notOperator ? ' NOT LIKE ' : ' LIKE '), '%'.$value.'%');
@@ -571,15 +563,14 @@ class Manager extends ArrayObject {
 	}
 	
 	/**
-	 * Limit
+	 * Limit the number of results.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access public
-	 * @return const
+	 * @param	int
+	 * @param	int
+	 * @return	self
 	 */
-	public function limit($offset, $rowCount=null) {		
-		$this->select(); // Prepare select query
+	public function limit( $offset, $rowCount = null ) {		
+		$this->prepareQuery(); // Prepare select query
 		
 		switch ($this->driver) {
 			case 'access':
@@ -595,15 +586,13 @@ class Manager extends ArrayObject {
 	}
 	
 	/**
-	 * Group by
+	 * Group results by a field.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access public
-	 * @return const
+	 * @param	string
+	 * @return	self
 	 */
 	public function group( $field ) {		
-		$this->select(); // Prepare select query
+		$this->prepareQuery(); // Prepare select query
 		
 		$this->query .= ($this->addParenthesis ? ")" : "")." GROUP BY {$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]}";
 		$this->addParenthesis = false;
@@ -612,14 +601,14 @@ class Manager extends ArrayObject {
 	}
 	
 	/**
-	 * Order method for queries
+	 * Order results by a field.
 	 * 
-	 * @param	string|array	the field to order by or an array containing the fields and the orders
-	 * @param	string|bool		the order to order the fields by
+	 * @param	mixed
+	 * @param	mixed
 	 * @return	self
 	 */
 	public function order( $field, $order = 'asc' ) {
-		$this->select(); // Prepare select query
+		$this->prepareQuery(); // Prepare select query
 		
 		// Process multiple orders at the same time
 		if (is_array($field)) {
@@ -648,14 +637,14 @@ class Manager extends ArrayObject {
 	}
 	
 	/**
-	 * Where
+	 * Add a where condition to a query.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @param	string
+	 * @param	string
+	 * @param	string
+	 * @return	void
 	 */
-	private function where($field, $operator, $value) {
+	private function where( $field, $operator, $value ) {
 		$this->bindCount++;
 		$this->query .= " AND {$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]}{$operator}";
 		if ($value===null) {
@@ -667,15 +656,12 @@ class Manager extends ArrayObject {
 	}
 	
 	/**
-	 * Select
+	 * Prepare a query.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @return	void
 	 */
-	private function select() {		
-		if (!isset($this->query) || $this->query=='') {
+	private function prepareQuery() {		
+		if (empty($this->query)) {
 			$this->query = "SELECT * FROM {$this->slashes[$this->driver][0]}{$this->tableName}{$this->slashes[$this->driver][1]} WHERE (";
 		}
 		
@@ -691,12 +677,23 @@ class Manager extends ArrayObject {
 	}
 	
 	/**
-	 * Reset Query
+	 * Clean the query for execution.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @return	void
+	 */
+	private function cleanQuery() {
+		$this->query = str_replace(
+			['  ', '( (', '  ', 'WHERE ( AND', '( AND', '( ', ' )', ' WHERE ()', ' ;'], 
+			[' ', '((', ' ', 'WHERE (', '(', '(', ')', '', ';'], 
+			$this->query.($this->addParenthesis ? ")":"").";");
+		
+		if (substr($this->query, -10, -1)==' WHERE ()') $this->query = substr($this->query, 0, -10).";"; // Remove WHERE at the end of the query when now arguments are provided
+	}
+	
+	/**
+	 * Reset a query.
+	 * 
+	 * @return	void
 	 */
 	private function resetQuery() {
 		$this->query = null;
@@ -705,14 +702,23 @@ class Manager extends ArrayObject {
 	}	
 	
 	/**
-	 * __get magic method is used to switch operators (or, not) 
+	 * Update values of unique result after update query.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @return	void
 	 */
-    public function __get($name) {
+	private function refreshUniqueObject() {
+		foreach ($this->uniqueObject as $field=>$value) {
+			$this->$field = $this[$field] = $value;
+		}
+	}
+	
+	/**
+	 * Add operators to query.
+	 * 
+	 * @param	string
+	 * @return	self
+	 */
+    public function __get( $name ) {
 		switch($name) {
 			case 'or': $this->orOperator = true; break;
 			case 'not': $this->notOperator = true; break;
@@ -722,12 +728,9 @@ class Manager extends ArrayObject {
     }
 		
 	/**
-	 * Reset operators
+	 * Reset operators.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @return	void
 	 */
 	private function resetOperators() {
 		$this->orOperator = $this->notOperator = $this->andOperator = false;

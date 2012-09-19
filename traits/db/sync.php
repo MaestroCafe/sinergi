@@ -2,7 +2,7 @@
 
 namespace sinergi\db;
 
-use Sinergi, DB, File, stdClass, ArrayObject;
+use Sinergi, Query, File, stdClass, ArrayObject;
 
 trait Sync {
 	/**
@@ -214,7 +214,7 @@ trait Sync {
 	 */
 	protected function create_db( $table ) {
 		// Create db
-		$db = new DB($table['database'], $table['table']);
+		$db = new Query($table['database'], $table['table']);
 
 		// Apply rules
 		if (isset($table['rules']) && method_exists($this, $table['rules'])) {

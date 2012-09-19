@@ -36,22 +36,16 @@ use PDO,
 
 class Result extends ArrayObject {
 	/**
+	 * Connection, table name, db type and db's slashes
 	 * 
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @var	mixed
 	 */
 	protected $connection, $tableName, $dbType, $slashes;
 	
 	/**
+	 * Create a Result
 	 * 
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @return	void
 	 */
 	public function __construct($connection, $tableName, $dbType, $slashes) {
 		$this->connection = $connection;
@@ -61,12 +55,10 @@ class Result extends ArrayObject {
 	}
 
 	/**
+	 * Update a result
 	 * 
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @param	bool
+	 * @return	self
 	 */
 	public function update($field, $value=null) {
 		if (!is_array($field)) { $field = [$field=>$value]; } // Options
@@ -91,24 +83,22 @@ class Result extends ArrayObject {
 	}
 	
 	/**
+	 * Decrease a value.
 	 * 
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @param	string
+	 * @param	int
+	 * @return	self
 	 */
 	public function decrease($field, $value=1) {
 		return $this->increase($field, -$value);
 	}
 
 	/**
+	 * Increase a value.
 	 * 
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @param	string
+	 * @param	int
+	 * @return	self
 	 */
 	public function increase($field, $value=1) {
 		if (!is_array($field)) { $field = [$field=>$value]; } // Options
@@ -133,12 +123,9 @@ class Result extends ArrayObject {
 	}
 	
 	/**
+	 * Delete a result.
 	 * 
-	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @return	self
 	 */
 	public function delete() {
 		$this->query("DELETE FROM");
@@ -147,12 +134,14 @@ class Result extends ArrayObject {
 	}
 	
 	/**
-	 * The query function serves the update and delete fuctions. Because both functions are almost identical,
+	 * The query function serves the update and delete fuctions. Because both functions are almost identical.
 	 * 
-	 * @param $provider
-	 * @var bool
-	 * @access private
-	 * @return const
+	 * @param	string
+	 * @param	array
+	 * @param	int
+	 * @param	string
+	 * @param	array
+	 * @return	void
 	 */
 	protected function query($query, $binds = [], $bindCount = 0, $querySet="", $newValues=null) {
 		$query = strtoupper($query);
