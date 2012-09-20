@@ -76,11 +76,6 @@ class Query extends sinergi\db\Manager {
 	 * @return	void
 	 */
 	public function __construct( $databaseName, $tableName = null ) {
-		if (!isset($tableName)) {
-			$tableName = $databaseName;
-			$databaseName = null;
-		}
-		
 		$this->setDatabase($databaseName);
 		$this->tableName = $tableName;
 	}
@@ -88,96 +83,125 @@ class Query extends sinergi\db\Manager {
 	/**
 	 * Set the database.
 	 *
-	 * @return	void
+	 * @param	string
+	 * @return	bool
 	 */
-	private function setDatabase( $databaseName = null ) {
+	private function setDatabase( $databaseName ) {
 		global $settings;
-		
-		if (isset($databaseName)) {
+				
+		if (isset($settings['databases'][$databaseName])) {
 			$this->databaseName = $databaseName;
-		} else {
-			$this->databaseName = key($settings['databases']);
-		}
-		
-		if (isset($settings['databases'][$this->databaseName])) {
-			$this->driver = $settings['databases'][$this->databaseName]['type'];
+			$this->driver = $settings['databases'][$databaseName]['type'];
+			
+			return true;
 		} else {
 			trigger_error("The database {$databaseName} does not exists", E_USER_WARNING);
+			return false;
+		}
+	}
+		
+	/**
+	 * PDO Connect.
+	 *
+	 * @param	string
+	 * @return	void
+	 */
+	private static function connectDatabase( $databaseName ) {
+		global $settings;
+		
+		if (isset(self::$connections[$databaseName])) { // Check if application is already connected
+			return self::$connections[$databaseName];
+		
+		} else { // Otherwise create connection
+			
+			$databaseAddress = explode(':', $settings['databases'][$databaseName]['host']); // Get database address and port
+			
+			// Create DNS
+			switch($settings['databases'][$databaseName]['type']) {
+				
+				case 'mysql':
+					$dsn = 
+						"mysql:dbname={$settings['databases'][$databaseName]['dbname']};".
+						"host={$databaseAddress[0]};".
+						(!empty($databaseAddress[1]) ? "port={$databaseAddress[1]};":"");
+					
+					// Use UTF-8 with MySQL by default
+					$driverOptions = [PDO::MYSQL_ATTR_INIT_COMMAND=>'SET NAMES \'UTF8\''];
+					break;
+				
+				case 'sqlserver':
+					$dsn = 
+						"dblib:dbname={$settings['databases'][$databaseName]['dbname']};".
+						"host={$databaseAddress[0]};".
+						"charset=UTF-8;".
+						(!empty($databaseAddress[1]) ? "port={$databaseAddress[1]};":"");
+					
+					$driverOptions = [];
+					break;
+				
+				case 'odbc':
+					$dsn = 
+						"odbc:{$settings['databases'][$databaseName]['source']}";
+					
+					$driverOptions = [];
+					break;
+			}
+			
+			// Persistent connections
+			if (isset($settings['databases'][$databaseName]['persistent']) && $settings['databases'][$databaseName]['persistent']) $driverOptions[PDO::ATTR_PERSISTENT] = true;
+			
+			// Try to connect
+			try {				
+				$connection = 
+					new PDO(
+						$dsn, 
+						$settings['databases'][$databaseName]['user'], 
+						$settings['databases'][$databaseName]['password'],
+						$driverOptions
+					);
+			}
+			catch(PDOException $e) {
+				trigger_error($e->getMessage());
+				return false;
+			}
+			
+			self::$connections[$databaseName] = $connection; // Store the database connection for other instances
+			
+			return $connection;
 		}
 	}
 	
 	/**
-	 * PDO Connect.
-	 *
-	 * @return	void
+	 * Check if connection was successful
+	 * 
+	 * @param	string
+	 * @return	self
 	 */
-	private function connectDatabase() {
+	public static function connected( $databaseName ) {
 		global $settings;
 		
-		if (isset(self::$connections[$this->databaseName])) { // Check if application is already connected
-			$this->connection = self::$connections[$this->databaseName];
-		
-		} else { // Otherwise create connection
-			
-			$databaseAddress = explode(':', $settings['databases'][$this->databaseName]['host']); // Get database address and port
-			
-			// Create DNS
-			switch($this->driver) {
-				case 'mysql':
-					$dsn = 
-						"mysql:dbname={$settings['databases'][$this->databaseName]['dbname']};".
-						"host={$databaseAddress[0]};".
-						(!empty($databaseAddress[1]) ? "port={$databaseAddress[1]};":"");
-					break;
-				case 'sqlserver':
-					$dsn = 
-						"dblib:dbname={$settings['databases'][$this->databaseName]['dbname']};".
-						"host={$databaseAddress[0]};".
-						"charset=UTF-8;".
-						(!empty($databaseAddress[1]) ? "port={$databaseAddress[1]};":"");
-					break;
-				case 'odbc':
-					$dsn = 
-						"odbc:{$settings['databases'][$this->databaseName]['source']}";
-					break;
+		if (isset(self::$connections[$databaseName])) {
+			return true;
+		} else {
+			if (isset($settings['databases'][$databaseName])) {
+				if (self::connectDatabase( $databaseName )) {
+					return true;
+				}
+			} else {
+				trigger_error("The database {$databaseName} does not exists", E_USER_WARNING);
 			}
-			
-			// Create driver options
-			switch($this->driver) {
-			    case 'mysql': // Use UTF-8 with MySQL by default
-			    	$driverOptions = [PDO::MYSQL_ATTR_INIT_COMMAND=>'SET NAMES \'UTF8\''];
-			    	break;
-			    	
-			    default:
-			    	$driverOptions = [];
-			    	break;
-			}
-			
-			// Try to connect
-			try {				
-				$this->connection = 
-			    	new PDO(
-			    		$dsn, 
-			    		$settings['databases'][$this->databaseName]['user'], 
-			    		$settings['databases'][$this->databaseName]['password'],
-			    		$driverOptions
-			    	);
-			    
-			}
-			catch(PDOException $e) {
-				trigger_error($e->getMessage());
-			}
-			
-			self::$connections[$this->databaseName] = $this->connection; // Store the database connection for other instances
 		}
+		return false;
 	}
 	
 	/**
 	 * PDO methods shortcuts.
 	 *
+	 * @param	string
+	 * @param	array
 	 * @return	void
 	 */
-	public function __call($method, $args) {
+	public function __call( $method, $args ) {
 		switch($method) {
 			case 'commit': 
 			case 'errorCode': 
@@ -193,7 +217,7 @@ class Query extends sinergi\db\Manager {
 			case 'rollBack': 
 			case 'setAttribute':
 				if (!isset($this->connection)) {
-					$this->connectDatabase();
+					$this->connection = self::connectDatabase( $this->databaseName );
 				}
 				
 				// Call the PDO method

@@ -137,8 +137,8 @@ class Sinergi {
 		global $settings;
 		
 		// Get the settings file and set the default timezone. 
-		if (isset($settings['time_zone'])) {
-			date_default_timezone_set($settings['time_zone']);
+		if (isset($settings['timeZone'])) {
+			date_default_timezone_set($settings['timeZone']);
 		}
 		
 		// Define if the application is running in development mode.

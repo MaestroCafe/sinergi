@@ -1,203 +1,243 @@
 <?php
 
+/**
+ * Sinergi is an open source application development framework for PHP
+ *
+ * Requires PHP version 5.4
+ *
+ * LICENSE: This source file is subject to the GNU General Public License 
+ * version 2.0 (GPL-2.0) that is bundled with this package in the file 
+ * LICENSE-GPL.txt and is available through the world-wide-web at the 
+ * following URI: http://www.opensource.org/licenses/GPL-2.0. If you did 
+ * not receive a copy of the GNU General Public License version 2.0 and are 
+ * unable to obtain it through the web, please send a note to admin@sinergi.co 
+ * so we can mail you a copy immediately.
+ *
+ * @package		sinergi
+ * @author		Sinergi Team
+ * @copyright	2010-2012 Sinergi Team
+ * @license		http://www.opensource.org/licenses/GPL-2.0 GNU General Public License version 2.0 (GPL-2.0)
+ * @link		https://github.com/sinergi/sinergi
+ * @since		Version 1.0
+ */
+ 
+/**
+ * The sync trait facilitate the synchronisation of two database tables.
+ *
+ * @category	core
+ * @package		sinergi
+ * @author		Sinergi Team
+ * @link		https://github.com/sinergi/sinergi
+ */
+
 namespace sinergi\db;
 
-use Sinergi, Query, File, stdClass, ArrayObject;
+use Query, 
+	PersistentVars, 
+	stdClass;
 
 trait Sync {
 	/**
 	 * Interval, in minutes, at which the process is executed. We use 1 minute here because the real interval is decided
 	 * in the 'intervals' parameter of the synchronization process. This way, the "changes" and "deletes"
 	 * synchronization can have different intervals.
+	 * 
+	 * @var	int
 	 */
 	public $interval = 1;
 
 	/**
 	 * Variable used to store keys for deletes and data for changes.
+	 * 
+	 * @var	array
+	 * @var	array
 	 */
-	protected $diff_keys = [];
-	protected $diff_data = [];
+	private $diffKeys = [];
+	private $diffData = [];
 
 	/**
-	 * Variable used to write and read synchronization status from the file defined by $sync_file.
+	 * Variable used to track the synchronization status.
+	 * 
+	 * @var	object(stdClass)
+	 * @var	object(stdClass)
 	 */
-	protected $sync_status;
-	protected $new_status;
+	private $syncStatus;
+	private $newStatus;
 
 	/**
 	 * Store the entries to update to the master keys.
+	 * 
+	 * @var	array
 	 */
-	protected $master_keys = [];
+	private $masterKeys = [];
 
 	/**
 	 * Detemines if changes were syncronised in order to know if we have to re-write changes to the file.
+	 * 
+	 * @var	bool
 	 */
-	protected $changed_data = false;
+	private $changedData = false;
 
 	/**
 	 * Execute the synchronization. Do not use an execute() method in the class because it will overide this one!
-	 *
-	 * @access public
-	 * @return void
+	 * 
+	 * @return	void
 	 */
-	public function log($message) { /*(new File("/data/logs/".basename(str_replace('.json', '.log', $this->sync_file))))->append(($message=='' ? '' : date('Y-m-d H:i:s')).' '.$message.PHP_EOL);*/ }
-	public function execute() {
+	public function sync() {
 		// Allow unlimited memory to the process
-		Sinergi::unlimited_memory();
+		self::unlimitedMemory();
+		
+		// Define a unique key for persistent variable
+		$key = base64_encode(__CLASS__);
+
 		// Check if process is already running, otherwise mark it as running
-		if (file_exists(DOCUMENT_ROOT.$this->sync_file.'.running')) {
-			if(date('Y-m-d H:i:s', (new File(DOCUMENT_ROOT.$this->sync_file.'.running'))->get_creation_date()) < date('Y-m-d H:i:s', (time() - (60*60)))) { // Delete file if it is older than 1 hour
-				(new File(DOCUMENT_ROOT.$this->sync_file.'.running'))->delete();
-			}
+		if (PersistentVars::exists($key.".lock")) {
+			// Delete file if it is older than 1 hour
+			if (PersistentVars::info($key.".lock")['creationTime'] < (time() - (60*60))) {
+				// Replace current persitent var by backup
+				if (PersistentVars::exists($key.".bak")) {
+					PersistentVars::store($key, PersistentVars::fetch($key.".bak"));
+				}
+				PersistentVars::delete($key.".lock");
+			}			
 			return false;
 		} else {
-			$running = new File(DOCUMENT_ROOT.$this->sync_file.'.running');
+			PersistentVars::store($key.".lock");
 		}
 		
 		// Get last synchronization status from data file
-		$this->log('Initialize');
-		$file_exists = file_exists(DOCUMENT_ROOT.$this->sync_file);
-		$sync_status_file = (new File($this->sync_file))->read();
-
-		$this->log('Read file');
-		if (trim((string) $sync_status_file) !== "") { $this->sync_status = json_decode(trim((string) $sync_status_file)); }
-		if (!is_object($this->sync_status)) { $this->sync_status = new stdClass(); }
-		$this->log('Parsed file');
+		$this->syncStatus = $originalSyncStatus = PersistentVars::fetch($key);
+		if (!is_object($this->syncStatus)) { $this->syncStatus = new stdClass(); }
 
 		// If file exists but data is not correct, stop the script
-		if ($file_exists) {
-			foreach ($this->tables as $table_key=>$table) {
-				if (!isset($this->sync_status->$table_key)) {
-					
+		if (PersistentVars::exists($key)) {
+			foreach ($this->tables as $tableKey => $table) {
+				if (!isset($this->syncStatus->{$tableKey})) {
 					// Send email to admin
-					$this->compose('Maestro Technologies', 'information@maestro.ca', 'admin@tangente.co', 'admin@tangente.co', 'emails/alerts/sync_down.html', [str_replace(['process\\', '\\'], ['', '/'], get_class($this))]);
-					
+					### SEND ALERT SCRIPT TO BE PLACED HERE ###
 					return false;
 				}
 			}
 			// Otherwise backup file
-			(new File($this->sync_file))->duplicate($this->sync_file.'.bak');
+			PersistentVars::store($key.'.bak', $this->syncStatus);
 		}
 
-		$this->log('Backed up file');
 		// Prepare new synchronization status that will be written to file
-		$this->new_status = new stdClass();
-		$this->new_status->last_sync = date('Y-m-d H:i:s'); // Used as a reference only
+		$this->newStatus = new stdClass();
+		$this->newStatus->lastSync = date('Y-m-d H:i:s'); // Used as a reference only
 
-		/**
-		 * Set default options
-		 */
-		foreach ($this->tables as $table_key=>$table) {
-			if (!isset($this->sync_status->$table_key) || !is_object($this->sync_status->$table_key)) {
-				$this->sync_status->$table_key = new stdClass();
+		// Set default options
+		foreach ($this->tables as $tableKey => $table) {
+			if (!isset($this->syncStatus->{$tableKey}) || !is_object($this->syncStatus->{$tableKey})) {
+				$this->syncStatus->{$tableKey} = new stdClass();
 			}
-			$this->new_status->$table_key = $this->sync_status->$table_key;
-			/**
-			 * Last row is used to track if we synced the last row of the table to sync.
-			 */
-			if (!isset($this->sync_status->$table_key->last_row)) {$this->sync_status->$table_key->last_row = false; }
-			/**
-			 * Last sync timestamp is used to track the timestamp of the last row synchronised, use only once you reached the last key
-			 * to synchronise and then you don't consider the limit anymore. Otherwise, all data with the same timestamp over the limite
-			 * would never be synchronised.
-			 */
-			if (!isset($this->sync_status->$table_key->last_sync_timestamp)) { $this->sync_status->$table_key->last_sync_timestamp = '0'; }
-			/**
-			 * Last sync key is used to track the last key synchronised.
-			 * Last row is only used for the first synchronization of the tables, in which we use the limit.
-			 */
-			if (!isset($this->sync_status->$table_key->last_sync_key)) { $this->sync_status->$table_key->last_sync_key = 0; }
-			/**
-			 * Store the keys for each table, in order to find out which ones were deleted.
-			 */
-			if (!isset($this->sync_status->$table_key->keys)) { $this->sync_status->$table_key->keys = []; }
+			$this->newStatus->{$tableKey} = $this->syncStatus->{$tableKey};
+			
+			// Last row is used to track if we synced the last row of the table to sync.
+			if (!isset($this->syncStatus->{$tableKey}->lastRow)) {
+				$this->syncStatus->{$tableKey}->lastRow = false;
+			}
+			
+			// Last sync timestamp is used to track the timestamp of the last row synchronised, use only once you reached the last key
+			// to synchronise and then you don't consider the limit anymore. Otherwise, all data with the same timestamp over the limite
+			// would never be synchronised.
+			if (!isset($this->syncStatus->{$tableKey}->lastSyncTimestamp)) { $this->syncStatus->{$tableKey}->lastSyncTimestamp = '0'; }
+			
+			// Last sync key is used to track the last key synchronised.
+			// Last row is only used for the first synchronization of the tables, in which we use the limit.
+			if (!isset($this->syncStatus->{$tableKey}->lastSyncKey)) { $this->syncStatus->{$tableKey}->lastSyncKey = 0; }
+			
+			// Store the keys for each table, in order to find out which ones were deleted.
+			if (!isset($this->syncStatus->{$tableKey}->keys)) { $this->syncStatus->{$tableKey}->keys = []; }
 		}
-
-		$this->log('Initialized default options');
+		
 		// Get data from tables
-		foreach($this->tables as $table_key=>$table) {
-			// If table does not use timestamp and as reached the end, reset the last_key to 0
-			if (!isset($table['timestamp']) && $this->sync_status->$table_key->last_row) {
-				$this->sync_status->$table_key->last_row = false;
-				$this->sync_status->$table_key->last_sync_key = 0;
+		foreach($this->tables as $tableKey => $table) {
+			// If table does not use timestamp and as reached the end, reset the lastSyncKey to 0
+			if (!isset($table['timestamp']) && $this->syncStatus->{$tableKey}->lastRow) {
+				$this->syncStatus->{$tableKey}->lastRow = false;
+				$this->syncStatus->{$tableKey}->lastSyncKey = 0;
 			} 
 			
-			$this->get_table_data($table, $table_key);
+			$this->getTableData($table, $tableKey);
 		}
 		
-		$this->log('Got data');
 		// Resolve conflicts
-		$this->resolve_conflicts($table, $table_key);
+		$this->resolveConflicts($table, $tableKey);
 		
-		$this->log('Resolved conflicts');
 		// Synchronise tables
-		foreach($this->tables as $table_key=>$table) {
-			$this->sync_table_data($table, $table_key);
+		foreach($this->tables as $tableKey => $table) {
+			$this->syncTableData($table, $tableKey);
 		}
 
-		$this->log('Syncrhonized tables');
 		// Update keys on tables that have been syncrhonised with master table
-		$this->udpate_master_keys();
+		$this->udpateMasterKeys();
 
-		$this->log('Updated master keys');
-		
-		$this->log('');
-		if ($this->changed_data || (trim((string) $sync_status_file) == "")) {
-			$sync_status_file->write(json_encode($this->new_status));
+		if ($this->changedData || (trim((string) $originalSyncStatus) == "")) {
+			PersistentVars::store($key, $this->newStatus);
 		}
 			
-		$running->delete();
+		PersistentVars::delete($key.".lock");
 	}
-
+	
+	/**
+	 * Allow syncrhonisation to run for long periods of time.
+	 * 
+	 * @return	void
+	 */
+	private function unlimitedMemory() {
+		set_time_limit(0);
+		ignore_user_abort(true);
+		ini_set('memory_limit', '-1');	
+		ini_set('max_input_time', '-1');		
+	}
+	
 	/**
 	 * Get data from tables.
-	 *
-	 * @access protected
-	 * @return void
+	 * 
+	 * @param	string
+	 * @param	string
+	 * @return	void
 	 */
-	protected function get_table_data( $table, $table_key ) {
+	private function getTableData( $table, $tableKey ) {
 		if (isset($table['intervals']) || isset($table['limits'])) {
 			// Get deletes first
 			if (isset($table['intervals']['deletes']) && (floor(time()/60) % $table['intervals']['deletes']) == 0) {
-				$this->log('	Get deletes keys');
-				$this->keys[$table_key] = $this->get_master_keys($table);				
-				$this->log('	Get diff in keys');
-				$this->diff_keys[$table_key] = array_diff($this->sync_status->$table_key->keys, $this->keys[$table_key]);
+				$this->keys[$tableKey] = $this->getMasterKeys($table);				
+				$this->diffKeys[$tableKey] = array_diff($this->syncStatus->{$tableKey}->keys, $this->keys[$tableKey]);
 			}
 
 			// Get changes 
 			if (isset($table['intervals']['changes']) && (floor(time()/60) % $table['intervals']['changes']) == 0) {
-				$this->diff_data[$table_key] = $this->get_data_changes($table, $table_key, $this->sync_status->$table_key);
+				$this->diffData[$tableKey] = $this->getDataChanges($table, $tableKey, $this->syncStatus->{$tableKey});
 			}
 		}
-		return false;
 	}
 
 	/**
 	 * Synchronise tables.
-	 *
-	 * @param $table, $key
-	 * @var array, int
-	 * @access protected
-	 * @return void
+	 * 
+	 * @param	string
+	 * @param	string
+	 * @return	void
 	 */
-	protected function sync_table_data( $table, $table_key ) {
+	private function syncTableData( $table, $tableKey ) {
 		// Check if table is accepting synchronizations
 		if ((isset($table['sync']['changes']) && $table['sync']['changes']==true) || (isset($table['sync']['deletes']) && $table['sync']['deletes']==true)) {
 			// Sync deletes
 			if (isset($table['sync']['deletes']) && $table['sync']['deletes']==true) {
-				foreach($this->diff_keys as $diff_table_key=>$diff_keys) {
-					if ($diff_table_key!=$table_key) {
-						$this->delete_data($table, $table_key, $diff_keys, $diff_table_key);
+				foreach($this->diffKeys as $diffTableKey => $diffKeys) {
+					if ($diffTableKey!=$tableKey) {
+						$this->deleteData($table, $tableKey, $diffKeys, $diffTableKey);
 					}
 				}
 			}
 			
 			// Sync changes
 			if (isset($table['sync']['changes']) && $table['sync']['changes']==true) {
-				foreach($this->diff_data as $diff_table_key=>$diff_data) {
-					if ($diff_table_key!=$table_key) { // Only sync other tables
-						$this->sync_data($table, $table_key, $diff_data, $diff_table_key);
+				foreach($this->diffData as $diffTableKey => $diffData) {
+					if ($diffTableKey!=$tableKey) { // Only sync other tables
+						$this->syncData($table, $tableKey, $diffData, $diffTableKey);
 					}
 				}
 			}
@@ -205,86 +245,82 @@ trait Sync {
 	}
 
 	/**
-	 * Create db manager and add rules.
-	 *
-	 * @param $table
-	 * @var array
-	 * @access protected
-	 * @return object
+	 * Create query manager and add rules.
+	 * 
+	 * @param	string
+	 * @return	object(Query)
 	 */
-	protected function create_db( $table ) {
+	private function createQuery( $table ) {
 		// Create db
-		$db = new Query($table['database'], $table['table']);
+		$query = new Query($table['database'], $table['table']);
 
 		// Apply rules
 		if (isset($table['rules']) && method_exists($this, $table['rules'])) {
-			$db = call_user_func([$this, $table['rules']], $db);
+			$query = call_user_func([$this, $table['rules']], $query);
 		}
 
-		return $db;
+		return $query;
 	}
 
 	/**
 	 * Get all Primary Keys from table.
-	 *
+	 * 
 	 * @param $table
-	 * @var array
-	 * @access protected
+	 * @var array 
 	 * @return array
 	 */
-	protected function get_master_keys( $table ) {
+	private function getMasterKeys( $table ) {
 		if (isset($table['master']) && $table['master']) {
-			$master_key = $table['primary_key'];
+			$masterKey = $table['primaryKey'];
 		} else {
-			$master_key = $table['master_key'];
+			$masterKey = $table['masterKey'];
 		}
 		
 		// Get all keys
-		$keys = $this->create_db($table)
-						->get_all($master_key);
+		$keys = $this->createQuery($table)
+						->getAll($masterKey);
 
 		// Get only keys
 		$return = [];
 		foreach ($keys as $key) {
-			$return[] = $key->$master_key;
+			$return[] = $key->{$masterKey};
 		}
 		return $return;
 	}
 
 	/**
 	 * Get data to synchronise from table.
-	 *
+	 * 
 	 * @param $table
-	 * @var array
-	 * @access protected
+	 * @var array 
 	 * @return array
 	 */
-	protected function get_data_changes( $table, $table_key, $sync_status ) {
+	private function getDataChanges( $table, $tableKey, $syncStatus ) {
 		// Get last sync timestamp and parse it if there is a timestamp parser
-		if (isset($table['timestamp_parser']) && method_exists($this, $table['timestamp_parser'])) {
-			$last_sync_date = call_user_func([$this, $table['timestamp_parser']], $sync_status->last_sync_timestamp);
+		if (isset($table['timestampParser']) && method_exists($this, $table['timestampParser'])) {
+			$lastSyncDate = call_user_func([$this, $table['timestampParser']], $syncStatus->lastSyncTimestamp);
 		} else {
-			$last_sync_date = date('Y-m-d H:i:s', $sync_status->last_sync_timestamp);
+			$lastSyncDate = date('Y-m-d H:i:s', $syncStatus->lastSyncTimestamp);
 		}
 
 		// Get data above last primary key if we are synchronising from begining or from last timestamp otherwise
-		if (!$sync_status->last_row || !isset($table['timestamp'])) {
-			$data = $this->create_db($table)
-							->above($table['primary_key'], $sync_status->last_sync_key);
+		if (!$syncStatus->lastRow || !isset($table['timestamp'])) {
+			$data = $this->createQuery($table)
+							->above($table['primaryKey'], $syncStatus->lastSyncKey);
 		} else {
-			$data = $this->create_db($table)
-							->above($table['timestamp'], $last_sync_date);
+			$data = $this->createQuery($table)
+							->above($table['timestamp'], $lastSyncDate);
 		}
 
 		// Order the data by key if we are synchronising from the begining or by timestamp then key otherwise
-		if (!$sync_status->last_row || !isset($table['timestamp'])) {
-			$data->order($table['primary_key']);
+		if (!$syncStatus->lastRow || !isset($table['timestamp'])) {
+			$data->order($table['primaryKey']);
 		} else {
-			$data->order($table['timestamp'])->order($table['primary_key']);
+			$data->order($table['timestamp'])->order($table['primaryKey']);
 		}
 
 		// Limit if there is a limit and we are synchronising from the beggining of the database
-		if (!$sync_status->last_row) {
+		if (!$syncStatus->lastRow) {
 			if (isset($table['limit'])) {
 				// Get greatest limit
 				$limit = $table['limit'];
@@ -292,10 +328,10 @@ trait Sync {
 			}
 		}
 
-		// Get fields to sync, add primary_key and master_key if table is not master table
-		$fields = isset($table['fields']) ? array_merge($table['fields'], [$table['primary_key']]) : null;
-		if (isset($table['fields']) && isset($table['master_key'])) { $fields = array_merge($fields, [$table['master_key']]); }
-		$data->get_all($fields);
+		// Get fields to sync, add primaryKey and masterKey if table is not master table
+		$fields = isset($table['fields']) ? array_merge($table['fields'], [$table['primaryKey']]) : null;
+		if (isset($table['fields']) && isset($table['masterKey'])) { $fields = array_merge($fields, [$table['masterKey']]); }
+		$data->getAll($fields);
 
 		// Put data in an array
 		$return = [];
@@ -304,37 +340,37 @@ trait Sync {
 			$return[] = (array) $value;
 			
 			// Store this data's key if this is the master table
-			if (isset($table['master']) && $table['master'] && isset($value[$table['primary_key']]) && $value[$table['primary_key']]!=null && !in_array($value[$table['primary_key']], $this->new_status->$table_key->keys)) {
-				$this->new_status->$table_key->keys[] = $value[$table['primary_key']];
-			} else if ((!isset($table['master']) || !$table['master']) && isset($value[$table['master_key']]) && $value[$table['master_key']]!=null && !in_array($value[$table['master_key']], $this->new_status->$table_key->keys)) {
-				$this->new_status->$table_key->keys[] = $value[$table['master_key']];
+			if (isset($table['master']) && $table['master'] && isset($value[$table['primaryKey']]) && $value[$table['primaryKey']]!=null && !in_array($value[$table['primaryKey']], $this->newStatus->{$tableKey}->keys)) {
+				$this->newStatus->{$tableKey}->keys[] = $value[$table['primaryKey']];
+			} else if ((!isset($table['master']) || !$table['master']) && isset($value[$table['masterKey']]) && $value[$table['masterKey']]!=null && !in_array($value[$table['masterKey']], $this->newStatus->{$tableKey}->keys)) {
+				$this->newStatus->{$tableKey}->keys[] = $value[$table['masterKey']];
 			}
 
 			// Get last sync timestamp
 			if (isset($table['timestamp'])) {
-				$sync_timestamp = $value[$table['timestamp']];
+				$syncTimestamp = $value[$table['timestamp']];
 			}
 
-			if (isset($table['timestamp_parser']) && method_exists($this, $table['timestamp_parser'])) {
+			if (isset($table['timestampParser']) && method_exists($this, $table['timestampParser'])) {
 				// Get last sync timestamp and parse it if there is a timestamp parser
-				$sync_timestamp = call_user_func([$this, $table['timestamp_parser']], $sync_timestamp);
+				$syncTimestamp = call_user_func([$this, $table['timestampParser']], $syncTimestamp);
 			
 				// Store this data's timestamp if it is bigger then the last one stored
-				if($sync_timestamp > $this->new_status->$table_key->last_sync_timestamp) {
-				 	$this->new_status->$table_key->last_sync_timestamp = $sync_timestamp;
+				if($syncTimestamp > $this->newStatus->{$tableKey}->lastSyncTimestamp) {
+				 	$this->newStatus->{$tableKey}->lastSyncTimestamp = $syncTimestamp;
 				}
 			}
 			
 			// Get last primary key synchronised
-			if ($value[$table['primary_key']] > $this->new_status->$table_key->last_sync_key) {
-				$this->new_status->$table_key->last_sync_key = $value[$table['primary_key']];
+			if ($value[$table['primaryKey']] > $this->newStatus->{$tableKey}->lastSyncKey) {
+				$this->newStatus->{$tableKey}->lastSyncKey = $value[$table['primaryKey']];
 			}
 
 			$count++;
 		}
 
-		if (!isset($limit) || (!$sync_status->last_row && $count!=$limit)) {
-			$this->new_status->$table_key->last_row = true;
+		if (!isset($limit) || (!$syncStatus->lastRow && $count!=$limit)) {
+			$this->newStatus->{$tableKey}->lastRow = true;
 		}
 		
 		return $return;
@@ -342,26 +378,25 @@ trait Sync {
 
 	/**
 	 * Resolve duplicates changes by using the most recent one
-	 *
+	 * 
 	 * @param $provider
-	 * @var bool
-	 * @access private
+	 * @var bool 
 	 * @return const
 	 */
-	protected function resolve_conflicts() {
-		foreach($this->diff_data as $table_key=>$diff_data) { // Loop through all diff data
-			if (isset($this->tables[$table_key]['timestamp'])) { // Can only resolve conflicts when using a timestamp reference
-				$this->log('	Starts to resolve '.$table_key.", there is ".count($diff_data)." fields to check");
+	private function resolveConflicts() {
+		foreach($this->diffData as $tableKey=>$diffData) { // Loop through all diff data
+			if (isset($this->tables[$tableKey]['timestamp'])) { // Can only resolve conflicts when using a timestamp reference
+				$this->log('	Starts to resolve '.$tableKey.", there is ".count($diffData)." fields to check");
 				
-				$master_key = (isset($this->tables[$table_key]['master']) && $this->tables[$table_key]['master'] ? $this->tables[$table_key]['primary_key'] : $this->tables[$table_key]['master_key']); // Get table master key
-				$timestamp = $this->tables[$table_key]['timestamp']; // Get table timestamp key
+				$masterKey = (isset($this->tables[$tableKey]['master']) && $this->tables[$tableKey]['master'] ? $this->tables[$tableKey]['primaryKey'] : $this->tables[$tableKey]['masterKey']); // Get table master key
+				$timestamp = $this->tables[$tableKey]['timestamp']; // Get table timestamp key
 	
-				foreach($diff_data as $data_key=>$data) { // Loop through table's diff data
-					if ($match = $this->diff_data_search($data[$master_key], $this->diff_data, $table_key)) { // Check for a conflict
-						$conflict_data = $this->diff_data[$match['table_key']][$match['data_key']];
+				foreach($diffData as $dataKey => $data) { // Loop through table's diff data
+					if ($match = $this->diffDataSearch($data[$masterKey], $this->diffData, $tableKey)) { // Check for a conflict
+						$conflictData = $this->diffData[$match['tableKey']][$match['dataKey']];
 	
-						if($conflict_data[$match['timestamp']]>=$data[$timestamp]) { // Compare conflict with data
-							unset($this->diff_data[$table_key][$data_key]); // Unset data if conflict is more recent
+						if($conflictData[$match['timestamp']]>=$data[$timestamp]) { // Compare conflict with data
+							unset($this->diffData[$tableKey][$dataKey]); // Unset data if conflict is more recent
 						}
 					}
 				}
@@ -371,21 +406,20 @@ trait Sync {
 
 	/**
 	 * Search diff data for conflicts
-	 *
+	 * 
 	 * @param $provider
-	 * @var bool
-	 * @access private
+	 * @var bool 
 	 * @return const
 	 */
-	protected function diff_data_search( $needle, $diff_data, $needle_table_key ) {
-		foreach($diff_data as $table_key=>$table_data) { // Loop through all diff data
-			if ($table_key!=$needle_table_key) { // Except for the needle's table data
-				$master_key = (isset($this->tables[$table_key]['master']) && $this->tables[$table_key]['master'] ? $this->tables[$table_key]['primary_key'] : $this->tables[$table_key]['master_key']); // Get table master key
-				$timestamp = $this->tables[$table_key]['timestamp']; // Get table timestamp key
+	private function diffDataSearch( $needle, $diffData, $needleTableKey ) {
+		foreach($diffData as $tableKey => $tableData) { // Loop through all diff data
+			if ($tableKey!=$needleTableKey) { // Except for the needle's table data
+				$masterKey = (isset($this->tables[$tableKey]['master']) && $this->tables[$tableKey]['master'] ? $this->tables[$tableKey]['primaryKey'] : $this->tables[$tableKey]['masterKey']); // Get table master key
+				$timestamp = $this->tables[$tableKey]['timestamp']; // Get table timestamp key
 
-				foreach($table_data as $data_key=>$data) { // Loop through table's diff data
-					if($data[$master_key]==$needle) { // Chck for a match
-						return ['table_key'=>$table_key, 'data_key'=>$data_key, 'master_key'=>$master_key, 'timestamp'=>$timestamp]; // Return the match's keys
+				foreach($tableData as $dataKey => $data) { // Loop through table's diff data
+					if($data[$masterKey]==$needle) { // Chck for a match
+						return ['tableKey'=>$tableKey, 'dataKey'=>$dataKey, 'masterKey'=>$masterKey, 'timestamp'=>$timestamp]; // Return the match's keys
 					}
 				}
 
@@ -396,103 +430,102 @@ trait Sync {
 
 	/**
 	 * Synchronise changes and addition data to table (gathered using a timestamp)
-	 *
-	 * @param $table, $diff_data, $diff_table_key
-	 * @var array, array, int
-	 * @access protected
-	 * @return void
+	 * 
+	 * @param $table, $diffData, $diffTableKey
+	 * @var array, array, int 
+	 * @return	void
 	 */
-	protected function sync_data( $table, $table_key, $diff_data, $diff_table_key ) {
-		foreach($diff_data as $diff_row_key=>$diff_row) {
-			$this->changed_data = true;
+	private function syncData( $table, $tableKey, $diffData, $diffTableKey ) {
+		foreach($diffData as $diffRowKey => $diffRow) {
+			$this->changedData = true;
 			
 			// Get last sync timestamp
-			if (isset($this->tables[$diff_table_key]['timestamp'])) {
-				$sync_timestamp = $diff_row[$this->tables[$diff_table_key]['timestamp']];
+			if (isset($this->tables[$diffTableKey]['timestamp'])) {
+				$syncTimestamp = $diffRow[$this->tables[$diffTableKey]['timestamp']];
 			} else {
-				$sync_timestamp = 0;
+				$syncTimestamp = 0;
 			}
 
 			// Get last sync timestamp and parse it if there is a timestamp parser
-			if (isset($this->tables[$diff_table_key]['timestamp_parser']) && method_exists($this, $this->tables[$diff_table_key]['timestamp_parser'])) {
-				$sync_timestamp = call_user_func([$this, $this->tables[$diff_table_key]['timestamp_parser']], $sync_timestamp);
+			if (isset($this->tables[$diffTableKey]['timestampParser']) && method_exists($this, $this->tables[$diffTableKey]['timestampParser'])) {
+				$syncTimestamp = call_user_func([$this, $this->tables[$diffTableKey]['timestampParser']], $syncTimestamp);
 			}
 
 			// Parse data if data parser is configured
-			if (isset($table['data_parser']) && method_exists($this, $table['data_parser'])) {
-				$data = call_user_func([$this, $table['data_parser']], $diff_row);
+			if (isset($table['dataParser']) && method_exists($this, $table['dataParser'])) {
+				$data = call_user_func([$this, $table['dataParser']], $diffRow);
 
 			// Otherwise just assign data to the key
 			} else {
 				foreach($table['fields'] as $field) {
-					$data[$field] = $diff_row[$field];
+					$data[$field] = $diffRow[$field];
 				}
 			}
 
 			// If data is not false, sync it
 			if($data!==false) {
-				// If table is master and diff table has a master_key, this table's primary_key is the diff table's master_key
-				if (isset($table['master']) && $table['master'] && $diff_row[$this->tables[$diff_table_key]['master_key']]!=null) {
-					$data[$table['primary_key']] = $diff_row[$this->tables[$diff_table_key]['master_key']];
+				// If table is master and diff table has a masterKey, this table's primaryKey is the diff table's masterKey
+				if (isset($table['master']) && $table['master'] && $diffRow[$this->tables[$diffTableKey]['masterKey']]!=null) {
+					$data[$table['primaryKey']] = $diffRow[$this->tables[$diffTableKey]['masterKey']];
 
-				// If this row has already been synchronised with master table and got a key, use key as master_key
-				} else if (isset($this->master_keys[$diff_table_key][$diff_row_key])) {
-					$data[$table['master_key']] = $this->master_keys[$diff_table_key][$diff_row_key]['master_key'];
+				// If this row has already been synchronised with master table and got a key, use key as masterKey
+				} else if (isset($this->masterKeys[$diffTableKey][$diffRowKey])) {
+					$data[$table['masterKey']] = $this->masterKeys[$diffTableKey][$diffRowKey]['masterKey'];
 
 				// If diff table is master, diff data primary key becomes table master key
-				} else if(isset($this->tables[$diff_table_key]['master']) && $this->tables[$diff_table_key]['master']) {
-					$data[$table['master_key']] = $diff_row[$this->tables[$diff_table_key]['primary_key']];
+				} else if(isset($this->tables[$diffTableKey]['master']) && $this->tables[$diffTableKey]['master']) {
+					$data[$table['masterKey']] = $diffRow[$this->tables[$diffTableKey]['primaryKey']];
 
 				// If diff table is not master, diff data master key becomes table master key if diff data master key exists
-				} else if(!isset($this->tables[$diff_table_key]['master']) && $diff_row[$this->tables[$diff_table_key]['master_key']]!=null) {
-					$data[$table['master_key']] = $diff_row[$this->tables[$diff_table_key]['master_key']];
+				} else if(!isset($this->tables[$diffTableKey]['master']) && $diffRow[$this->tables[$diffTableKey]['masterKey']]!=null) {
+					$data[$table['masterKey']] = $diffRow[$this->tables[$diffTableKey]['masterKey']];
 				}
 
 				// Create db
-				$db = $this->create_db($table);
+				$query = $this->createQuery($table);
 
 				// Get primary key for master table and master key for slaves
 				if(isset($table['master']) && $table['master']) {
-					$primary_key = $table['primary_key'];
+					$primaryKey = $table['primaryKey'];
 				} else {
-					$primary_key = $table['master_key'];
+					$primaryKey = $table['masterKey'];
 				}
 
 				// Update if exists, create otherwise, we do not use replace here because it would erase data that is not synchronized
-				if (isset($data[$primary_key]) && count($db->find($primary_key, $data[$primary_key])->get())) {
-					$sync_key = $db->$table['primary_key'];
-					$db->update($data);
+				if (isset($data[$primaryKey]) && count($query->find($primaryKey, $data[$primaryKey])->get())) {
+					$syncKey = $query->{$table['primaryKey']};
+					$query->update($data);
 				} else {
-					$db->create($data);
-					$sync_key = $db->get_id();
+					$query->create($data);
+					$syncKey = $query->getId();
 				}
 
-				// If table master, store master_key for update later
-				if(isset($table['master']) && $table['master'] && $diff_row[$this->tables[$diff_table_key]['master_key']]==null) {
-					$master_key = $sync_key;
-					$this->master_keys[$diff_table_key][$diff_row_key] = ['primary_key'=>$diff_row[$this->tables[$diff_table_key]['primary_key']], 'master_key'=>$master_key];
+				// If table master, store masterKey for update later
+				if(isset($table['master']) && $table['master'] && $diffRow[$this->tables[$diffTableKey]['masterKey']]==null) {
+					$masterKey = $syncKey;
+					$this->masterKeys[$diffTableKey][$diffRowKey] = ['primaryKey'=>$diffRow[$this->tables[$diffTableKey]['primaryKey']], 'masterKey'=>$masterKey];
 				}
 
-				// Get last primary key synchronised and store it in new_status if it is bigger then the key already stored
-				if ($sync_key>$this->new_status->$table_key->last_sync_key) {
-					$this->new_status->$table_key->last_sync_key = $sync_key;
+				// Get last primary key synchronised and store it in newStatus if it is bigger then the key already stored
+				if ($syncKey>$this->newStatus->{$tableKey}->lastSyncKey) {
+					$this->newStatus->{$tableKey}->lastSyncKey = $syncKey;
 				}
 
 				// Store this data's timestamp if it is bigger then the last one stored
-				if($sync_timestamp>$this->new_status->$table_key->last_sync_timestamp) {
-				 	$this->new_status->$table_key->last_sync_timestamp = $sync_timestamp;
+				if($syncTimestamp>$this->newStatus->{$tableKey}->lastSyncTimestamp) {
+				 	$this->newStatus->{$tableKey}->lastSyncTimestamp = $syncTimestamp;
 				}
 												
 				// Store this data's key
-				if (isset($table['master']) && $table['master'] && isset($sync_key) && $sync_key!=null && !in_array($sync_key, $this->new_status->$table_key->keys)) {
-					$this->new_status->$table_key->keys[] = $sync_key;
-				} else if((!isset($table['master']) || !$table['master']) && isset($data[$table['master_key']]) && $data[$table['master_key']]!=null && !in_array($data[$table['master_key']], $this->new_status->$table_key->keys)) {
-					$this->new_status->$table_key->keys[] = $data[$table['master_key']];
+				if (isset($table['master']) && $table['master'] && isset($syncKey) && $syncKey!=null && !in_array($syncKey, $this->newStatus->{$tableKey}->keys)) {
+					$this->newStatus->{$tableKey}->keys[] = $syncKey;
+				} else if((!isset($table['master']) || !$table['master']) && isset($data[$table['masterKey']]) && $data[$table['masterKey']]!=null && !in_array($data[$table['masterKey']], $this->newStatus->{$tableKey}->keys)) {
+					$this->newStatus->{$tableKey}->keys[] = $data[$table['masterKey']];
 				}
 				
 				// Callback
-				if (!empty($sync_key) && $sync_key!=0 && isset($table['callback'])) {					
-					call_user_func([$this, $table['callback']], $sync_key);
+				if (!empty($syncKey) && $syncKey!=0 && isset($table['callback'])) {					
+					call_user_func([$this, $table['callback']], $syncKey);
 				}
 			}
 		}
@@ -500,23 +533,22 @@ trait Sync {
 
 	/**
 	 * Update the master key of the tables that have been synchronised with the master table
-	 *
-	 * @param $table, $diff_data, $diff_table_key
-	 * @var array, array, int
-	 * @access protected
-	 * @return void
+	 * 
+	 * @param $table, $diffData, $diffTableKey
+	 * @var array, array, int 
+	 * @return	void
 	 */
-	protected function udpate_master_keys() {
-		foreach ($this->master_keys as $table_key=>$rows) {
-			$this->changed_data = true;
+	private function udpateMasterKeys() {
+		foreach ($this->masterKeys as $tableKey=>$rows) {
+			$this->changedData = true;
 			
 			foreach ($rows as $row) {
-				$table = $this->tables[$table_key];
-				$this->create_db($table)->find($table['primary_key'], $row['primary_key'])->update($table['master_key'], $row['master_key']);
+				$table = $this->tables[$tableKey];
+				$this->createQuery($table)->find($table['primaryKey'], $row['primaryKey'])->update($table['masterKey'], $row['masterKey']);
 				
 				// Store this data's key 
-				if (!in_array($row['master_key'], $this->new_status->$table_key->keys)) {
-					$this->new_status->$table_key->keys[] = $row['master_key'];
+				if (!in_array($row['masterKey'], $this->newStatus->{$tableKey}->keys)) {
+					$this->newStatus->{$tableKey}->keys[] = $row['masterKey'];
 				}
 			}
 		}
@@ -524,42 +556,41 @@ trait Sync {
 
 	/**
 	 * Delete data that comes from the diff between table's key and file's key
-	 *
-	 * @param $table, $diff_data
-	 * @var array, array
-	 * @access protected
-	 * @return void
+	 * 
+	 * @param $table, $diffData
+	 * @var array, array 
+	 * @return	void
 	 */
-	protected function delete_data( $table, $table_key, $diff_keys, $diff_table_key ) {
-		foreach ($diff_keys as $key) {
-			$this->changed_data = true;
+	private function deleteData( $table, $tableKey, $diffKeys, $diffTableKey ) {
+		foreach ($diffKeys as $key) {
+			$this->changedData = true;
 			
 			if (isset($table['master']) && $table['master']) {
-				$primary_key = $table['primary_key'];
+				$primaryKey = $table['primaryKey'];
 			} else {
-				$primary_key = $table['master_key'];
+				$primaryKey = $table['masterKey'];
 			}
 						
 			// Delete from table's status
-			$new_keys = [];
-			foreach ($this->new_status->$table_key->keys as $new_key) {
-				if($new_key!=$key) {
-					$new_keys[] = $new_key;
+			$newKeys = [];
+			foreach ($this->newStatus->{$tableKey}->keys as $newKey) {
+				if($newKey!=$key) {
+					$newKeys[] = $newKey;
 				}
 			}
-			$this->new_status->$table_key->keys = $new_keys;
+			$this->newStatus->{$tableKey}->keys = $newKeys;
 			
 			// Delete from diff table's status
-			$new_keys = [];
-			foreach ($this->new_status->$diff_table_key->keys as $new_key) {
-				if($new_key!=$key) {
-					$new_keys[] = $new_key;
+			$newKeys = [];
+			foreach ($this->newStatus->{$diffTableKey}->keys as $newKey) {
+				if($newKey!=$key) {
+					$newKeys[] = $newKey;
 				}
 			}
-			$this->new_status->$diff_table_key->keys = $new_keys;
+			$this->newStatus->{$diffTableKey}->keys = $newKeys;
 
 			// Delete entry from table
-			$entry = $this->create_db($table)->find($primary_key, $key)->get()->delete();
+			$entry = $this->createQuery($table)->find($primaryKey, $key)->delete();
 				
 			// Callback
 			if (!empty($key) && $key!=0 && isset($table['callbacks']['deletes'])) {					

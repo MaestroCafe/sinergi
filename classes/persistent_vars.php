@@ -38,7 +38,7 @@ class PersistentVars {
 	 * @param	mixed
 	 * @return	bool
 	 */
-	public static function add( $key, $var ) {
+	public static function add( $key, $var = "" ) {
 		if (file_exists(Path::$core . ".cache/{$key}")) {
 			return false;
 		} else {
@@ -54,7 +54,7 @@ class PersistentVars {
 	 * @param	mixed
 	 * @return	bool
 	 */
-	public static function store( $key, $var ) {
+	public static function store( $key, $var = "" ) {
 		(new File('core/.cache/'.$key))->write(serialize($var));
 		return true;
 	}
@@ -66,7 +66,7 @@ class PersistentVars {
 	 * @param	mixed
 	 * @return	bool
 	 */
-	public static function extend( $key, $var ) {
+	public static function extend( $key, $var = "" ) {
 		$file = (new File('core/.cache/'.$key));
 		$array = unserialize($file->read());
 		
@@ -118,11 +118,26 @@ class PersistentVars {
 	 * @return	mixed
 	 */
 	public static function exists( $key ) {
-		if (file_exists(Path::$core . ".cache/{$key}")) {
-			return true;
+		// Verify multiple keys
+		if (is_array($key)) {
+			$output = [];
+			foreach($key as $item) {
+				if (file_exists(Path::$core . ".cache/{$item}")) {
+					$output[$item] = true;
+				} else {
+					$output[$item] = false;
+				}
+			}
+			
+		// Verify one key
 		} else {
-			return false;
+			if (file_exists(Path::$core . ".cache/{$key}")) {
+				$output = true;
+			} else {
+				$output = false;
+			}
 		}
+		return $output;
 	}
 	
 	/**
@@ -134,4 +149,38 @@ class PersistentVars {
 	public static function delete( $key ) {
 		(new File('core/.cache/'.$key))->delete();
 	}
+	
+	/**
+	 * Get info on cache
+	 * 
+	 * @param	mixed
+	 * @return	array
+	 */
+	public static function info( $key ) {
+		// Get info on multiple keys
+		if (is_array($key)) {
+			$output = [];
+			foreach($key as $item) {
+				if (file_exists(Path::$core . ".cache/{$item}")) {
+					$output[$item] = [
+						'creationTime' => (new File('core/.cache/'.$item))->getCreationDate()
+					];
+				} else {
+					$output[$item] = null;
+				}
+			}
+			
+		// Get info on one key
+		} else {
+			if (file_exists(Path::$core . ".cache/{$key}")) {
+				$output = [
+					'creationTime' => (new File('core/.cache/'.$key))->getCreationDate()
+				];
+			} else {
+				$output = null;
+			}
+		}
+		return $output;
+	}
+	
 }
