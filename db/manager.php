@@ -149,19 +149,32 @@ class Manager extends ArrayObject {
 		
 		$this->cleanQuery();
 		
+		// Create query fields
 		if (isset($fields)) {
 			$queryFields = "";
-			foreach($fields as $field) $queryFields .= "{$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]}, "; // Create query fields
+			foreach($fields as $field) {
+				// Check if field contains functions or is already escaped
+				if (preg_match("/[\(|\)|{$this->slashes[$this->driver][0]}|{$this->slashes[$this->driver][1]}|'|\"]/", $field)) {
+					$queryFields .= "{$field}, ";
+				
+				// Otherwise, escape field
+				} else {
+					$queryFields .= "{$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]}, ";
+				}
+			}
+						
 			$queryFields = substr($queryFields, 0, -2);
 						
 			$this->query = str_replace(" * FROM", " {$queryFields} FROM", $this->query); // Put query fields in query
 		}
 		
+		// Debug mode
 		if (isset($this->die) && $this->die==true) {
 			var_dump($this->binds);
 			echo $this->query; die();
 		}
-
+		
+		// Execute query
 		$sth = $this->prepare($this->query);
 		$sth->execute($this->binds);
 				

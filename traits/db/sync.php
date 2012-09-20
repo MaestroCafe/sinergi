@@ -100,7 +100,7 @@ trait Sync {
 				}
 				PersistentVars::delete($key.".lock");
 			}			
-			return false;
+			//return false;
 		} else {
 			PersistentVars::store($key.".lock");
 		}
@@ -173,7 +173,7 @@ trait Sync {
 		// Update keys on tables that have been syncrhonised with master table
 		$this->udpateMasterKeys();
 
-		if ($this->changedData || (trim((string) $originalSyncStatus) == "")) {
+		if ($this->changedData || (empty($originalSyncStatus))) {
 			PersistentVars::store($key, $this->newStatus);
 		}
 			
@@ -255,8 +255,8 @@ trait Sync {
 		$query = new Query($table['database'], $table['table']);
 
 		// Apply rules
-		if (isset($table['rules']) && method_exists($this, $table['rules'])) {
-			$query = call_user_func([$this, $table['rules']], $query);
+		if (isset($table['rules']) && method_exists($this, $table['callbacks']['rules'])) {
+			$query = call_user_func([$this, $table['callbacks']['rules']], $query);
 		}
 
 		return $query;
@@ -297,10 +297,10 @@ trait Sync {
 	 */
 	private function getDataChanges( $table, $tableKey, $syncStatus ) {
 		// Get last sync timestamp and parse it if there is a timestamp parser
-		if (isset($table['timestampParser']) && method_exists($this, $table['timestampParser'])) {
-			$lastSyncDate = call_user_func([$this, $table['timestampParser']], $syncStatus->lastSyncTimestamp);
+		if (isset($table['callbacks']['timestamp']) && method_exists($this, $table['callbacks']['timestamp'])) {
+			$lastSyncDate = call_user_func([$this, $table['callbacks']['timestamp']], $syncStatus->lastSyncTimestamp);
 		} else {
-			$lastSyncDate = date('Y-m-d H:i:s', $syncStatus->lastSyncTimestamp);
+			$lastSyncDate = date('Y-m-d H:i:s', (!is_integer($syncStatus->lastSyncTimestamp) ? strtotime($syncStatus->lastSyncTimestamp) : $syncStatus->lastSyncTimestamp));
 		}
 
 		// Get data above last primary key if we are synchronising from begining or from last timestamp otherwise
@@ -350,10 +350,10 @@ trait Sync {
 			if (isset($table['timestamp'])) {
 				$syncTimestamp = $value[$table['timestamp']];
 			}
-
-			if (isset($table['timestampParser']) && method_exists($this, $table['timestampParser'])) {
+			
+			if (isset($table['callbacks']['timestamp']) && method_exists($this, $table['callbacks']['timestamp'])) {
 				// Get last sync timestamp and parse it if there is a timestamp parser
-				$syncTimestamp = call_user_func([$this, $table['timestampParser']], $syncTimestamp);
+				$syncTimestamp = call_user_func([$this, $table['callbacks']['timestamp']], $syncTimestamp);
 			
 				// Store this data's timestamp if it is bigger then the last one stored
 				if($syncTimestamp > $this->newStatus->{$tableKey}->lastSyncTimestamp) {
@@ -385,9 +385,7 @@ trait Sync {
 	 */
 	private function resolveConflicts() {
 		foreach($this->diffData as $tableKey=>$diffData) { // Loop through all diff data
-			if (isset($this->tables[$tableKey]['timestamp'])) { // Can only resolve conflicts when using a timestamp reference
-				$this->log('	Starts to resolve '.$tableKey.", there is ".count($diffData)." fields to check");
-				
+			if (isset($this->tables[$tableKey]['timestamp'])) { // Can only resolve conflicts when using a timestamp reference				
 				$masterKey = (isset($this->tables[$tableKey]['master']) && $this->tables[$tableKey]['master'] ? $this->tables[$tableKey]['primaryKey'] : $this->tables[$tableKey]['masterKey']); // Get table master key
 				$timestamp = $this->tables[$tableKey]['timestamp']; // Get table timestamp key
 	
@@ -447,13 +445,13 @@ trait Sync {
 			}
 
 			// Get last sync timestamp and parse it if there is a timestamp parser
-			if (isset($this->tables[$diffTableKey]['timestampParser']) && method_exists($this, $this->tables[$diffTableKey]['timestampParser'])) {
-				$syncTimestamp = call_user_func([$this, $this->tables[$diffTableKey]['timestampParser']], $syncTimestamp);
+			if (isset($this->tables[$diffTableKey]['callbacks']['timestamp']) && method_exists($this, $this->tables[$diffTableKey]['callbacks']['timestamp'])) {
+				$syncTimestamp = call_user_func([$this, $this->tables[$diffTableKey]['callbacks']['timestamp']], $syncTimestamp);
 			}
 
 			// Parse data if data parser is configured
-			if (isset($table['dataParser']) && method_exists($this, $table['dataParser'])) {
-				$data = call_user_func([$this, $table['dataParser']], $diffRow);
+			if (isset($table['callbacks']['data']) && method_exists($this, $table['callbacks']['data'])) {
+				$data = call_user_func([$this, $table['callbacks']['data']], $diffRow);
 
 			// Otherwise just assign data to the key
 			} else {
@@ -524,8 +522,8 @@ trait Sync {
 				}
 				
 				// Callback
-				if (!empty($syncKey) && $syncKey!=0 && isset($table['callback'])) {					
-					call_user_func([$this, $table['callback']], $syncKey);
+				if (!empty($syncKey) && $syncKey!=0 && isset($table['callbacks']['insert']) && method_exists($this, $table['callbacks']['insert'])) {					
+					call_user_func([$this, $table['callbacks']['insert']], $syncKey);
 				}
 			}
 		}
@@ -593,8 +591,8 @@ trait Sync {
 			$entry = $this->createQuery($table)->find($primaryKey, $key)->delete();
 				
 			// Callback
-			if (!empty($key) && $key!=0 && isset($table['callbacks']['deletes'])) {					
-			    call_user_func([$this, $table['callbacks']['deletes']], $key);
+			if (!empty($key) && $key!=0 && isset($table['callbacks']['delete']) && method_exists($this, $table['callbacks']['delete'])) {					
+			    call_user_func([$this, $table['callbacks']['delete']], $key);
 			}
 		}
 	}
