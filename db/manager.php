@@ -607,7 +607,14 @@ class Manager extends ArrayObject {
 	public function group( $field ) {		
 		$this->prepareQuery(); // Prepare select query
 		
-		$this->query .= ($this->addParenthesis ? ")" : "")." GROUP BY {$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]}";
+		// Check if field contains functions or is already escaped
+		if (preg_match("/[\(|\)|{$this->slashes[$this->driver][0]}|{$this->slashes[$this->driver][1]}|'|\"]/", $field)) {
+			$this->query .= ($this->addParenthesis ? ")" : "")." GROUP BY {$field}";
+		
+		// Otherwise, escape field
+		} else {
+			$this->query .= ($this->addParenthesis ? ")" : "")." GROUP BY {$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]}";
+		}
 		$this->addParenthesis = false;
 
 		return $this;
@@ -644,7 +651,14 @@ class Manager extends ArrayObject {
 			$this->query .= ", ";
 		}
 		
-		$this->query .= "{$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]} ".(!$order || strtolower($order) === 'desc' ? "DESC " : "");
+		// Check if field contains functions or is already escaped
+		if (preg_match("/[\(|\)|{$this->slashes[$this->driver][0]}|{$this->slashes[$this->driver][1]}|'|\"]/", $field)) {
+			$this->query .= "{$field} ".(!$order || strtolower($order) === 'desc' ? "DESC " : "");
+		
+		// Otherwise, escape field
+		} else {
+			$this->query .= "{$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]} ".(!$order || strtolower($order) === 'desc' ? "DESC " : "");
+		}
 
 		return $this;
 	}
@@ -659,7 +673,16 @@ class Manager extends ArrayObject {
 	 */
 	private function where( $field, $operator, $value ) {
 		$this->bindCount++;
-		$this->query .= " AND {$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]}{$operator}";
+
+		// Check if field contains functions or is already escaped
+		if (preg_match("/[\(|\)|{$this->slashes[$this->driver][0]}|{$this->slashes[$this->driver][1]}|'|\"]/", $field)) {
+		    $this->query .= " AND {$field}{$operator}";
+		
+		// Otherwise, escape field
+		} else {
+		    $this->query .= " AND {$this->slashes[$this->driver][0]}{$field}{$this->slashes[$this->driver][1]}{$operator}";
+		}
+		
 		if ($value===null) {
 			$this->query .= "NULL";		
 		} else {

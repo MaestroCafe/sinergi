@@ -99,8 +99,8 @@ trait Sync {
 					PersistentVars::store($key, PersistentVars::fetch($key.".bak"));
 				}
 				PersistentVars::delete($key.".lock");
-			}			
-			//return false;
+			}
+			return false;
 		} else {
 			PersistentVars::store($key.".lock");
 		}
@@ -265,9 +265,8 @@ trait Sync {
 	/**
 	 * Get all Primary Keys from table.
 	 * 
-	 * @param $table
-	 * @var array 
-	 * @return array
+	 * @param	array
+	 * @return	array
 	 */
 	private function getMasterKeys( $table ) {
 		if (isset($table['master']) && $table['master']) {
@@ -291,9 +290,10 @@ trait Sync {
 	/**
 	 * Get data to synchronise from table.
 	 * 
-	 * @param $table
-	 * @var array 
-	 * @return array
+	 * @param	array
+	 * @param	string
+	 * @param	object(stdClass)
+	 * @return	array
 	 */
 	private function getDataChanges( $table, $tableKey, $syncStatus ) {
 		// Get last sync timestamp and parse it if there is a timestamp parser
@@ -348,7 +348,11 @@ trait Sync {
 
 			// Get last sync timestamp
 			if (isset($table['timestamp'])) {
-				$syncTimestamp = $value[$table['timestamp']];
+				$timestampKey = $table['timestamp'];
+				if (preg_match('/[` \'"\[\]\(\),]/', $table['timestamp'])) {
+					$timestampKey = $this->getQueryFieldName($table['timestamp'], $table['fields']);
+				} 
+				$syncTimestamp = $value[$timestampKey];
 			}
 			
 			if (isset($table['callbacks']['timestamp']) && method_exists($this, $table['callbacks']['timestamp'])) {
@@ -379,9 +383,7 @@ trait Sync {
 	/**
 	 * Resolve duplicates changes by using the most recent one
 	 * 
-	 * @param $provider
-	 * @var bool 
-	 * @return const
+	 * @return	void
 	 */
 	private function resolveConflicts() {
 		foreach($this->diffData as $tableKey=>$diffData) { // Loop through all diff data
@@ -405,9 +407,10 @@ trait Sync {
 	/**
 	 * Search diff data for conflicts
 	 * 
-	 * @param $provider
-	 * @var bool 
-	 * @return const
+	 * @param	string
+	 * @param	array
+	 * @param	string
+	 * @return	array
 	 */
 	private function diffDataSearch( $needle, $diffData, $needleTableKey ) {
 		foreach($diffData as $tableKey => $tableData) { // Loop through all diff data
@@ -429,8 +432,10 @@ trait Sync {
 	/**
 	 * Synchronise changes and addition data to table (gathered using a timestamp)
 	 * 
-	 * @param $table, $diffData, $diffTableKey
-	 * @var array, array, int 
+	 * @param	array
+	 * @param	string
+	 * @param	array
+	 * @param	string
 	 * @return	void
 	 */
 	private function syncData( $table, $tableKey, $diffData, $diffTableKey ) {
@@ -439,7 +444,11 @@ trait Sync {
 			
 			// Get last sync timestamp
 			if (isset($this->tables[$diffTableKey]['timestamp'])) {
-				$syncTimestamp = $diffRow[$this->tables[$diffTableKey]['timestamp']];
+				$timestampKey = $this->tables[$diffTableKey]['timestamp'];
+				if (preg_match('/[` \'"\[\]\(\),]/', $timestampKey)) {
+					$timestampKey = $this->getQueryFieldName($this->tables[$diffTableKey]['timestamp'], $this->tables[$diffTableKey]['fields']);
+				} 
+				$syncTimestamp = $diffRow[$timestampKey];
 			} else {
 				$syncTimestamp = 0;
 			}
@@ -532,8 +541,6 @@ trait Sync {
 	/**
 	 * Update the master key of the tables that have been synchronised with the master table
 	 * 
-	 * @param $table, $diffData, $diffTableKey
-	 * @var array, array, int 
 	 * @return	void
 	 */
 	private function udpateMasterKeys() {
@@ -555,8 +562,10 @@ trait Sync {
 	/**
 	 * Delete data that comes from the diff between table's key and file's key
 	 * 
-	 * @param $table, $diffData
-	 * @var array, array 
+	 * @param	array
+	 * @param	string
+	 * @param	array
+	 * @param	string
 	 * @return	void
 	 */
 	private function deleteData( $table, $tableKey, $diffKeys, $diffTableKey ) {
@@ -595,5 +604,23 @@ trait Sync {
 			    call_user_func([$this, $table['callbacks']['delete']], $key);
 			}
 		}
+	}
+	
+	/**
+	 * Search for the fieldname of a function
+	 * 
+	 * @param	string
+	 * @param	array
+	 * @return	string
+	 */
+	private function getQueryFieldName( $needle, $haystack ) {
+		if (preg_match('/[` \'"\[\]\(\),]/', $needle)) {
+			foreach($haystack as $field) {
+				if ($needle == substr($field, 0, strlen($needle))) {
+					return preg_replace('/.*AS *[`\[]?([\w\d]*)[`\]]?$/i', '$1', $field);
+				}
+			}
+		} 
+		return false;
 	}
 }
