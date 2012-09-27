@@ -60,6 +60,8 @@ class ElementGroup extends DOMManipulator implements Serializable {
 	 * @return	self
 	 */
 	public function inject( $element = null, $where = "bottom" ) {
+		if ($element instanceof Element) $element = $element->element;
+		
 		// Verify data passed
 		list($element, $where) = $this->injectParser($element, $where);
 		

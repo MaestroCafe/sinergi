@@ -53,7 +53,41 @@ class Result extends ArrayObject {
 		$this->dbType = $dbType;
 		$this->slashes = $slashes;
 	}
-
+	
+	/**
+	 * Append a value to this object
+	 * 
+	 * @param	array
+	 * @return	self
+	 */
+	public function append( $data ) {
+		if (!is_array($data)) trigger_error("Variable passed to append() is not an array", E_USER_WARNING);
+		$this->parseAppend($data);
+		return $this;
+	}
+	
+	/**
+	 * Parse data recursively to convert an array to an ArrayObject containing both the key and object variable
+	 * 
+	 * @param	array
+	 * @param	bool
+	 * @return	mixed
+	 */
+	private function parseAppend( $data, $return = false ) {
+		if ($return) $obj = new ArrayObject();
+		else $obj = $this;
+		
+		foreach($data as $key => $value) {
+			if (is_array($value)) {
+				$obj->{$key} = $obj[$key] = $this->parseAppend($value, true);
+			} else {
+				$obj->{$key} = $obj[$key] = $value;
+			}
+		}
+		
+		if ($return) return $obj;
+	}
+	
 	/**
 	 * Update a result
 	 * 

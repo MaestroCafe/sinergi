@@ -51,6 +51,17 @@ class Element extends DOMManipulator implements Serializable {
 	}
 	
 	/**
+	 * 
+	 * 
+	 * @param		
+	 * @return	
+	 */
+	public function addClass() {
+		
+	}
+	
+	
+	/**
 	 * Inject an element somwhere in the dom. The first param is the element relative to the injection and 
 	 * the second param is where in relation to this element we inject the new element.
 	 *
@@ -59,6 +70,8 @@ class Element extends DOMManipulator implements Serializable {
 	 * @return	self
 	 */
 	public function inject( $element = null, $where = "bottom" ) {
+		if ($element instanceof Element) $element = $element->element;
+		
 		// Verify data passed
 		list($element, $where) = $this->injectParser($element, $where);
 		

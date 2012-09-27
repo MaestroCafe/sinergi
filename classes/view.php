@@ -18,9 +18,19 @@ class View {
 	 * @param	array	the module the view is in
 	 * @return	void
 	 */	
-	public function __construct( $view, $args = null ) {		
+	public function __construct( $view, $args = null ) {
+		// Check if view is called from a module
+		$trace = debug_backtrace();
+		if (isset($trace[1]) && isset($trace[1]['class']) && preg_match('/^modules\\\/i', $trace[1]['class'])) {
+			$module = preg_replace('/modules\\\([^\\\]*)(.*)/', '$1', $trace[1]['class']);
+		}
+		
 		// Get View file name
-		$file = Path::$views . trim($view, ' /') . '.php';
+		if (!isset($module)) {
+			$file = Path::$views . trim($view, ' /') . '.php';
+		} else {
+			$file = Path::$modules . $module . '/views/' . trim($view, ' /') . '.php';
+		}
 				
 		// Define variables passed to the view.
 		if (isset($args) && !is_array($args)) {

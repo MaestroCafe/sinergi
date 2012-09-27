@@ -56,11 +56,15 @@ class DOMSelector {
 				if (isset($current) && $current) {
 					$match = self::loopElements( $current, $selector, $separator );
 				} else if (is_object($elements)) {
-					$match = self::loopElements( $elements, $selector, $separator );
+					if ($elements instanceof DOMElement) {
+						$match = self::loopElements( $elements, $selector, $separator );
+					}
 				} else if (is_array($elements)) {
 					foreach($elements as $element) {
-						if ($match = self::loopElements( $element, $selector, $separator )) {
-							break;
+						if ($element instanceof DOMElement) {
+							if ($match = self::loopElements( $element, $selector, $separator, true )) {
+								break;
+							}
 						}
 					}
 				}
@@ -72,7 +76,7 @@ class DOMSelector {
 				}
 			}
 		} while(next($parts));
-		
+
 		return $match;
 	}
 	
@@ -82,19 +86,29 @@ class DOMSelector {
 	 * @param	object(DOMElement)
 	 * @param	string
 	 * @param	string
+	 * @param	bool
 	 * @return	object(DOMElement)
 	 */
-	private static function loopElements( $element, $selector, $separator ) {
+	private static function loopElements( $element, $selector, $separator, $matchSelf = false ) {
 		if (!$element instanceof DOMElement) return false;
 		
 		switch($separator) {
 			// Search 
 			case '>':
 				$conditions = self::conditionsParser($selector);
-		
-				foreach($element->childNodes as $node) {
-					if (self::selectorMatch($node, $conditions)) {
-						return $node;
+				
+				// Try to match itself 
+				if ($matchSelf) {
+					if (self::selectorMatch($element, $conditions)) {
+						return $element;
+					}
+				
+				// Match element's childs
+				} else {
+					foreach($element->childNodes as $node) {
+						if (self::selectorMatch($node, $conditions)) {
+							return $node;
+						}
 					}
 				}
 				
@@ -113,18 +127,23 @@ class DOMSelector {
 			// Search all elements
 			case ' ': default: 
 				$conditions = self::conditionsParser($selector);
-		
-				foreach($element->childNodes as $node) {
-					if (self::selectorMatch($node, $conditions)) {
-						return $node;
-					} else if ($node->hasChildNodes()) {
-						// Loop through childs
-						if ($match = self::loopElements($node, $selector, $separator)) {
-							return $match;
+				// Try to match itself 
+				if ($matchSelf && self::selectorMatch($element, $conditions)) {
+					return $element;
+				
+				// Match element's childs
+				} else {
+					foreach($element->childNodes as $node) {
+						if (self::selectorMatch($node, $conditions)) {
+							return $node;
+						} else if ($node->hasChildNodes()) {
+							// Loop through childs
+							if ($match = self::loopElements($node, $selector, $separator)) {
+								return $match;
+							}
 						}
 					}
 				}
-				
 				break;
 		}		
 	}
