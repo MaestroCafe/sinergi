@@ -27,14 +27,7 @@ class Element extends DOMManipulator implements Serializable {
 		// Initialize string element (<element>)
 		} else if (is_string($element) && preg_match('/^\s*<.*>\s*$/', $element)) {
 			$element = trim($element);
-			
-			// Create node
-			$dom = new DOMDocument('1.0');
-			$dom->formatOutput = true;
-			$dom->encoding = "UTF-8";
-			$node = $dom->importNode($element, true);
-			
-			die('create element');
+			$this->element = DOM::importNode(DOM::loadElement($element));
 
 		// Initialize element by tag
 		} else if (is_string($element)) {
