@@ -1,9 +1,8 @@
 <?php
 
 use sinergi\DOM,
+	sinergi\DOMSelector,
 	sinergi\DOMManipulator;
-
-require_once Path::$core . "dom/manipulator.php";
 
 class Element extends DOMManipulator implements Serializable {
 	/**
@@ -21,8 +20,17 @@ class Element extends DOMManipulator implements Serializable {
 	 * @return	self
 	 */
 	public function __construct( $element, $properties = null ) {
-		if ($element instanceof DOMElement) {
-			$this->initDOMElement($element);
+		// Initalize a DOMElement element
+		if ($element instanceof DOMElement) {			
+			$this->element = DOM::importNode($element);
+		
+		// Initialize string element (<element>)
+		} else if (is_string($element) && preg_match('/^\s*<.*>\s*$/', $element)) {
+			die('create element');
+
+		// Initialize element by tag
+		} else if (is_string($element)) {
+			$this->element = DOM::createElement($element);
 		}
 	}
 	
@@ -41,26 +49,70 @@ class Element extends DOMManipulator implements Serializable {
 	}
 		
 	/**
-	 * Find an element using a CSS selector
+	 * Remove an element
 	 * 
-	 * @param	string
-	 * @return	object(Element)
+	 * @return	void
 	 */
-	public function destroy() {
+	public function remove() {
 		$this->element->parentNode->removeChild($this->element);
 	}
 	
 	/**
+	 * Add a class to an element
 	 * 
-	 * 
-	 * @param		
-	 * @return	
+	 * @param	string	
+	 * @return	self
 	 */
-	public function addClass() {
-		
+	public function addClass( $class ) {
+		$this->addClassHelper($this->element, $class);
+ 		return $this;
 	}
 	
+	/**
+	 * Check if an element has a class
+	 * 
+	 * @param	string
+	 * @return	bool
+	 */
+	public function hasClass( $class ) {
+ 		$classes = explode(' ', $this->element->getAttribute('class'));
+ 		return (in_array($class, $classes) ? true : false);
+	}
 	
+	/**
+	 * Get the value of an attribute
+	 * 
+	 * @param	string
+	 * @return	string
+	 */
+	public function get( $attr ) {
+		switch($attr) {
+			case 'tag':
+				return $this->element->nodeName;
+			case 'html':
+				return DOM::nodeContent($this->element);
+			case 'text':
+				return strip_tags(DOM::nodeContent($this->element));
+			default:
+				return $this->element->getAttribute($attr);
+		}
+	}
+	
+	/**
+	 * Set the value of an attribute
+	 * 
+	 * @param	mixed
+	 * @param	string
+	 * @return	self
+	 */
+	public function set( $attributes, $value = null ) {
+		if (!is_array($attributes)) $attributes = [$attributes=>$value];
+		
+		$this->setAttrHelper($this->element, $attributes);
+		
+		return $this;
+	}
+		
 	/**
 	 * Inject an element somwhere in the dom. The first param is the element relative to the injection and 
 	 * the second param is where in relation to this element we inject the new element.
@@ -98,17 +150,7 @@ class Element extends DOMManipulator implements Serializable {
 		
 		return $this;
 	}
-	
-	/**
-	 * Initalize a DOMElement element
-	 * 
-	 * @param	object(DOMElement)
-	 * @return	void
-	 */
-	private function initDOMElement( $element ) {
-		$this->element = DOM::importNode($element);
-	}
-	
+		
 	/**
 	 * Serialize an object(Element) for caching
 	 * 
@@ -141,5 +183,20 @@ class Element extends DOMManipulator implements Serializable {
 		
 		$element = $dom->childNodes->item(1)->childNodes->item(0)->childNodes->item(0);
 		$this->initDOMElement($element);
+	}
+	
+	/**
+	 * Shortcuts for methods
+	 * 
+	 * @param	string
+	 * @param	mixed
+	 * @return	mixed
+	 */
+	public function __call($method, $args) {
+		switch($method) {
+			case 'empty':	return $this->emptyElement($this->element); break;
+			case 'destroy':	return $this->remove(); break;
+		}
+		trigger_error("Call to undefined method Element::{$method}()", E_USER_ERROR);
 	}
 }

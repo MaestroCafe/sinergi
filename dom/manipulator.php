@@ -3,6 +3,7 @@
 namespace sinergi;
 
 use sinergi\DOM,
+	sinergi\DOMSelector,
 	View,
 	DOMDocument,
 	DOMElement;
@@ -46,4 +47,61 @@ class DOMManipulator {
 				
 		return [$element, $where];
 	}
+	
+	/**
+	 * Set attribute helper
+	 * 
+	 * @param	object(DOMElement)
+	 * @param	array
+	 * @return	void
+	 */
+	protected function setAttrHelper( $element, $attributes ) {
+		if ($element instanceof DOMElement) {
+			foreach($attributes as $attr=>$value) {
+				switch($attr) {
+					case 'html':
+						$this->emptyElement($element);
+						$element->appendChild(DOM::createCode($value));
+						break;
+					case 'text':
+						$this->emptyElement($element);
+						$element->appendChild(DOM::createText(strip_tags($value)));
+						break;
+					default:
+						$element->setAttribute($attr, $value);
+						break;
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Empty an element
+	 * 
+	 * @param	object(DOMElement)
+	 * @return	void
+	 */
+	protected function emptyElement( $element ) {
+		while($element->hasChildNodes()) {
+			$element->removeChild($element->firstChild);
+		}
+	}
+	
+	/**
+	 * Add class helper
+	 * 
+	 * @param	object(DOMElement)
+	 * @param	string
+	 * @return	void
+	 */
+	protected function addClassHelper( $element, $class ) {
+		if ($element instanceof DOMElement) {
+ 			$classes = explode(' ', $element->getAttribute('class'));
+ 			if (!in_array($class, $classes)) {
+	 			$currentClasses = $element->getAttribute('class');
+	 			$element->setAttribute('class', (empty($currentClasses) ? $class : "{$currentClasses} {$class}"));
+ 			}
+ 		}
+	}
+	
 }

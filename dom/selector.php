@@ -1,5 +1,10 @@
 <?php
 
+namespace sinergi;
+
+use DOMDocument,
+	DOMElement;
+
 class DOMSelector {	
 	/**
 	 * Store the last matched node name in case of :nth-of-type, :nth-last-of-type, :first-of-type or :last-of-type pseudo selectors
