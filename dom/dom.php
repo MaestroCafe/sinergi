@@ -117,6 +117,92 @@ class DOM {
 	}
 	
 	/**
+	 * Create an element from a string
+	 * 
+	 * @param	string
+	 * @param	string
+	 * @return	mixed
+	 */ 
+	public static function loadElement( $string, $doctype = null ) {
+		// Load string content into a DOMDocument object
+		$tree = new DOMDocument();
+		
+		if (Request::$fileType === 'xml') {
+			$tree->preserveWhiteSpace = false;
+			$string = trim($string);
+			@$tree->loadXML($string);
+		} else {
+			$string = str_replace(['&#34;', '&#39;'], ['[SANITIZEDDOUBLEQUOTES]', '[SANITIZEDSINGLEQUOTES]'], $string);
+			$string = mb_convert_encoding(trim($string), 'HTML-ENTITIES', 'UTF-8');
+			@$tree->loadHTML($string);
+		}
+		
+		// Append doctype to DOM
+		if (!empty($doctype)) {
+			$node = $tree->createCDATASection($doctype);
+			$tree->firstChild->parentNode->insertBefore($node, $tree->firstChild);
+		}
+
+		// Load XML
+		if (Request::$fileType === 'xml') {
+			if (count($tree->childNodes) === 1) {
+				return $tree->childNodes->item(0);
+			} else {
+				return $tree->childNodes;
+			}
+		
+		// Load HTML
+		} else {
+			// Check if view has HTML tags
+			if (preg_match('{<html.+</html>}msU', $string)) {
+				// Remove double HTML tags created by DOMDocument and count childrens
+				$html = null;
+				$count = 0;
+				foreach ($tree->childNodes as $node) {
+					if ($node->nodeName === 'html') { 
+						if (isset($html)) {
+							$html->parentNode->removeChild($html);
+							$count--;
+						}
+						$html = $node;
+					}
+					$count++;
+				}
+
+				if ($count === 1) {
+    				return $tree->childNodes->item(0);
+				} else {
+					return $tree->childNodes;
+				}
+				
+			// Otherwise use DOM inside body tag
+			} else {
+				// Create Elements object from each nodes from the tree
+				foreach ($tree->childNodes as $htmlNode) {
+					if ($htmlNode->nodeName === 'html' && $htmlNode->hasChildNodes()) {
+				    	foreach ($htmlNode->childNodes as $bodyNode) {
+							if ( $bodyNode->nodeName === 'body' && $bodyNode->hasChildNodes() ) {
+								// Count childrens
+								$count = 0;
+								foreach($bodyNode->childNodes as $node) $count++;
+								
+								if ($count === 1) {
+				    				return $bodyNode->childNodes->item(0);
+								} else {
+									return $bodyNode->childNodes;
+								}
+							}
+				    	}
+				    	break;
+					}
+				}
+			}
+		}
+		
+		return false;
+	}
+	
+	/**
 	 * Create a new DOM element
 	 * 
 	 * @param	string

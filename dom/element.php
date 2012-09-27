@@ -26,11 +26,20 @@ class Element extends DOMManipulator implements Serializable {
 		
 		// Initialize string element (<element>)
 		} else if (is_string($element) && preg_match('/^\s*<.*>\s*$/', $element)) {
+			$element = trim($element);
+			
+			// Create node
+			$dom = new DOMDocument('1.0');
+			$dom->formatOutput = true;
+			$dom->encoding = "UTF-8";
+			$node = $dom->importNode($element, true);
+			
 			die('create element');
 
 		// Initialize element by tag
 		} else if (is_string($element)) {
 			$this->element = DOM::createElement($element);
+			if (is_array($properties)) $this->setAttrHelper($this->element, $properties);
 		}
 	}
 	
@@ -150,7 +159,23 @@ class Element extends DOMManipulator implements Serializable {
 		
 		return $this;
 	}
+	
+	/**
+	 * Wraps an element into this element
+	 * 
+	 * @param	object(DOMElement)
+	 * @return	self
+	 */
+	public function wraps( $element ) {
+		if ($element instanceof View) $element = $element->element;
+		if ($element instanceof Element) $element = $element->element;
 		
+		$element->parentNode->insertBefore($this->element, $element);
+		$this->element->appendChild($element);
+		
+		return $this;
+	}
+	
 	/**
 	 * Serialize an object(Element) for caching
 	 * 

@@ -188,6 +188,6 @@ class ElementGroup extends DOMManipulator implements Serializable {
 			case 'empty':	return $this->emptyGroup(); break;
 			case 'destroy':	return $this->remove(); break;
 		}
-		trigger_error("Call to undefined method Element::{$method}()", E_USER_ERROR);
+		trigger_error("Call to undefined method ElementGroup::{$method}()", E_USER_ERROR);
 	}
 }
