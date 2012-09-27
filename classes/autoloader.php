@@ -49,7 +49,11 @@ class AutoLoader {
 		'Token'				=> 'classes/token.php',
 		'PersistentVars'	=> 'classes/persistent_vars.php',
 		'Query'				=> 'db/query.php',
+		'Cache'				=> 'classes/cache.php',
 		'sinergi\DOM'		=> 'dom/dom.php',
+		'Element'			=> 'dom/element.php',
+		'ElementGroup'		=> 'dom/elementgroup.php',
+		'DOMSelector'		=> 'dom/selector.php',
 	];
 	
 	/**

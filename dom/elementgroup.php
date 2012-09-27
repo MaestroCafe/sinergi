@@ -5,24 +5,23 @@ use sinergi\DOM,
 
 require_once Path::$core . "dom/manipulator.php";
 
-class Element extends DOMManipulator implements Serializable {
+class ElementGroup extends DOMManipulator implements Serializable {
 	/**
-	 * The DOMElement object
+	 * An array of DOMElement objects
 	 * 
 	 * @var	array
 	 */
-	public $element;
+	public $elements = [];
 	
 	/**
 	 * Create the element
 	 * 
-	 * @param	string
-	 * @param	array
+	 * @param	object(DOMNodeList)
 	 * @return	self
 	 */
-	public function __construct( $element, $properties = null ) {
-		if ($element instanceof DOMElement) {
-			$this->initDOMElement($element);
+	public function __construct( $elements ) {
+		foreach($elements as $element) {
+			$this->elements[] = DOM::importNode($element);
 		}
 	}
 	
@@ -33,7 +32,7 @@ class Element extends DOMManipulator implements Serializable {
 	 * @return	object(Element)
 	 */
 	public function getElement( $selector ) {
-		if ($element = DOMSelector::findElement( $this->element, $selector )) {
+		if ($element = DOMSelector::findElement( $this->elements, $selector )) {
 			return new Element($element);
 		} else {
 			return false;
@@ -47,7 +46,9 @@ class Element extends DOMManipulator implements Serializable {
 	 * @return	object(Element)
 	 */
 	public function destroy() {
-		$this->element->parentNode->removeChild($this->element);
+		foreach($this->elements as $element) {
+			$element->parentNode->removeChild($element);			
+		}
 	}
 	
 	/**
@@ -64,22 +65,32 @@ class Element extends DOMManipulator implements Serializable {
 		
 		// Store the first level childs of the DOM in an array
 		if ($element instanceof DOMDocument) {
-			DOM::$childs[] = $this->element;
+			foreach($this->elements as $node) {
+				DOM::$childs[] = $node;
+			}
 		}
 		
 		// Inject element 
 		switch($where) {
 			case 'top':
-				$element->insertBefore($this->element, $element->firstChild);
+				foreach(array_reverse($this->elements) as $node) {
+					$element->insertBefore($node, $element->firstChild);
+				}
 				break;
 			case 'before':
-				$element->parentNode->insertBefore($this->element, $element);
+				foreach($this->elements as $node) {
+					$element->parentNode->insertBefore($node, $element);
+				}
 				break;
 			case 'after':
-				$element->parentNode->insertBefore($this->element, $element->nextSibling);
+				foreach(array_reverse($this->elements) as $node) {
+					$element->parentNode->insertBefore($node, $element->nextSibling);
+				}
 				break;
 			case 'bottom':
-				$element->appendChild($this->element);
+				foreach($this->elements as $node) {
+					$element->appendChild($node);
+				}
 				break;
 		}
 		
@@ -87,17 +98,7 @@ class Element extends DOMManipulator implements Serializable {
 	}
 	
 	/**
-	 * Initalize a DOMElement element
-	 * 
-	 * @param	object(DOMElement)
-	 * @return	void
-	 */
-	private function initDOMElement( $element ) {
-		$this->element = DOM::importNode($element);
-	}
-	
-	/**
-	 * Serialize an object(Element) for caching
+	 * Serialize an object(ElementGroup) for caching
 	 * 
 	 * @return	string
 	 */	
@@ -106,15 +107,17 @@ class Element extends DOMManipulator implements Serializable {
 		$dom->formatOutput = true;
 		$dom->encoding = "UTF-8";
 		
-		$node = $dom->importNode($this->element, true);
-		$dom->appendChild($node);
+		foreach($this->elements as $element) {
+			$node = $dom->importNode($element, true);
+			$dom->appendChild($node);
+		}
 				
 		$data = $dom->saveHTML();
 		return $data;
 	}
 	
 	/**
-	 * Unserialize an object(Element)
+	 * Unserialize an object(ElementGroup)
 	 * 
 	 * @param	string
 	 * @return	void
@@ -126,7 +129,8 @@ class Element extends DOMManipulator implements Serializable {
 		
 		$dom->loadHTML($data);
 		
-		$element = $dom->childNodes->item(1)->childNodes->item(0)->childNodes->item(0);
-		$this->initDOMElement($element);
+		foreach($dom->childNodes->item(1)->childNodes->item(0)->childNodes as $node) {
+			$this->elements[] = DOM::importNode($node);
+		}
 	}
 }

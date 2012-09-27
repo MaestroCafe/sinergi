@@ -37,15 +37,11 @@ use Path,
 	DOMDocument,
 	Request;
 
-require_once Path::$core . 'dom/manipulation.php';
-require_once Path::$core . 'dom/selectors.php';
-require_once Path::$core . 'dom/element.php';
-
 class DOM {
 	/**
 	 * The DOM element
 	 * 
-	 * @var	DOMDocument
+	 * @var	object(DOMDocument)
 	 */
 	public static $dom;
 	
@@ -83,10 +79,10 @@ class DOM {
 		}
 		
 		$content = mb_convert_encoding($content, 'UTF-8', 'HTML-ENTITIES');
-
+		
 		$content = str_replace(
-			['class-fixed-tmp', '="attribute-fixed-tmp"', '[SANITIZEDDOUBLEQUOTES]', '[SANITIZEDSINGLEQUOTES]'], 
-			['class', '', '&#34;', '&#39;'], 
+			['[SANITIZEDDOUBLEQUOTES]', '[SANITIZEDSINGLEQUOTES]'], 
+			['&#34;', '&#39;'], 
 			$content
 		);
 		
@@ -96,7 +92,7 @@ class DOM {
 	/**
 	 * Get the content of a node by importing it in a separate DOM.
 	 * 
-	 * @param	DOMNode	the element get the content from
+	 * @param	object(DOMNode)
 	 * @return	string
 	 */
 	public static function nodeContent( $node ) {
@@ -109,10 +105,22 @@ class DOM {
 	}
 	
 	/**
+	 * Import a node into the DOM
+	 * 
+	 * @param	object(DOMElement)
+	 * @return	object(DOMElement)
+	 */
+	public static function importNode( $element ) {
+		if (!isset(self::$dom)) self::createDOM();
+		
+		return self::$dom->importNode( $element, true );
+	}
+	
+	/**
 	 * Create a new DOM element
 	 * 
-	 * @param	string	the element type to create
-	 * @return	DOMElement
+	 * @param	string
+	 * @return	object(DOMElement)
 	 */
 	public static function createElement( $element ) {
 		if (!isset(self::$dom)) self::createDOM();
@@ -123,8 +131,8 @@ class DOM {
 	/**
 	 * Create a text node that will be untouched
 	 * 
-	 * @param	string	the string of text to transform into a text node
-	 * @return	DOMCDATASection
+	 * @param	string
+	 * @return	object(DOMCDATASection)
 	 */
 	public static function createCode( $text ) {
 		if (!isset(self::$dom)) self::createDOM();
@@ -135,8 +143,8 @@ class DOM {
 	/**
 	 * Create a text node
 	 * 
-	 * @param	string	the string of text to transform into a text node
-	 * @return	DOMText
+	 * @param	string
+	 * @return	object(DOMText)
 	 */
 	public static function createText( $text ) {
 		if (!isset(self::$dom)) self::createDOM();
@@ -147,8 +155,8 @@ class DOM {
 	/**
 	 * Create a comment node
 	 * 
-	 * @param	string	the string of text to transform into a comment node
-	 * @return	DOMComment
+	 * @param	string
+	 * @return	object(DOMComment)
 	 */
 	public static function createComment( $text ) {
 		if (!isset(self::$dom)) self::createDOM();
